@@ -5,7 +5,7 @@
 - [ ] Loading skeletons instead of "Loading..." text
 
 ## Dashboard Enhancements
-- [ ] Account balances fetched from OANDA API
+- [x] Account balances fetched from OANDA API
 - [ ] Open positions view across all accounts
 - [ ] P&L summary / trade statistics (win rate, total profit/loss)
 - [ ] Connection status indicator showing if OANDA API is reachable
