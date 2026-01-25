@@ -20,17 +20,17 @@ import {
 import { useLogs } from '@/hooks/useTrades';
 import { RefreshCw } from 'lucide-react';
 
-type LogLevel = 'info' | 'warn' | 'error' | 'debug' | '';
-type LogCategory = 'trade' | 'account' | 'system' | 'api' | '';
+type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'all';
+type LogCategory = 'trade' | 'account' | 'system' | 'api' | 'all';
 
 export default function Logs() {
-  const [level, setLevel] = useState<LogLevel>('');
-  const [category, setCategory] = useState<LogCategory>('');
+  const [level, setLevel] = useState<LogLevel>('all');
+  const [category, setCategory] = useState<LogCategory>('all');
   const [limit, setLimit] = useState(100);
 
   const { data, isLoading, refetch } = useLogs({
-    level: level || undefined,
-    category: category || undefined,
+    level: level === 'all' ? undefined : level,
+    category: category === 'all' ? undefined : category,
     limit,
   });
 
@@ -63,7 +63,7 @@ export default function Logs() {
                   <SelectValue placeholder="All levels" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All levels</SelectItem>
+                  <SelectItem value="all">All levels</SelectItem>
                   <SelectItem value="error">Error</SelectItem>
                   <SelectItem value="warn">Warning</SelectItem>
                   <SelectItem value="info">Info</SelectItem>
@@ -79,7 +79,7 @@ export default function Logs() {
                   <SelectValue placeholder="All categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All categories</SelectItem>
+                  <SelectItem value="all">All categories</SelectItem>
                   <SelectItem value="trade">Trade</SelectItem>
                   <SelectItem value="account">Account</SelectItem>
                   <SelectItem value="system">System</SelectItem>
@@ -147,7 +147,7 @@ export default function Logs() {
                       </TableCell>
                       <TableCell>{log.action}</TableCell>
                       <TableCell className="max-w-xs truncate">
-                        {Object.keys(log.details).length > 0 ? (
+                        {log.details && Object.keys(log.details).length > 0 ? (
                           <code className="text-xs">
                             {JSON.stringify(log.details)}
                           </code>
