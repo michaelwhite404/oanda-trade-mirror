@@ -115,3 +115,56 @@ export function getOandaBaseUrl(environment: OandaEnvironment): string {
     ? 'https://api-fxtrade.oanda.com/v3'
     : 'https://api-fxpractice.oanda.com/v3';
 }
+
+export function getOandaStreamUrl(environment: OandaEnvironment): string {
+  return environment === 'live'
+    ? 'https://stream-fxtrade.oanda.com/v3'
+    : 'https://stream-fxpractice.oanda.com/v3';
+}
+
+// Streaming types
+export interface OandaStreamHeartbeat {
+  type: 'HEARTBEAT';
+  time: string;
+}
+
+export interface OandaStreamTransaction {
+  type: string;
+  id: string;
+  time: string;
+  accountID: string;
+  // ORDER_FILL specific fields
+  orderID?: string;
+  instrument?: string;
+  units?: string;
+  price?: string;
+  pl?: string;
+  financing?: string;
+  commission?: string;
+  accountBalance?: string;
+  reason?: string;
+  tradeOpened?: {
+    tradeID: string;
+    units: string;
+  };
+  tradeReduced?: {
+    tradeID: string;
+    units: string;
+    realizedPL: string;
+  };
+  tradeClosed?: Array<{
+    tradeID: string;
+    units: string;
+    realizedPL: string;
+  }>;
+}
+
+export type OandaStreamMessage = OandaStreamHeartbeat | OandaStreamTransaction;
+
+export function isStreamHeartbeat(message: OandaStreamMessage): message is OandaStreamHeartbeat {
+  return message.type === 'HEARTBEAT';
+}
+
+export function isStreamOrderFill(message: OandaStreamMessage): message is OandaStreamTransaction {
+  return message.type === 'ORDER_FILL';
+}

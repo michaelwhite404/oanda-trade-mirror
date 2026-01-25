@@ -23,7 +23,7 @@
 - [ ] Show sync status - whether mirrors are caught up with source
 
 ## Real-time Updates
-- [ ] WebSocket connection for live trade updates instead of manual refresh
+- [x] WebSocket connection for live trade updates instead of manual refresh
 - [ ] Desktop notifications when trades are mirrored (or fail)
 
 ## Quality of Life

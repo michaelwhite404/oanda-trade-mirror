@@ -1,14 +1,19 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { createServer } from 'http';
 import { config } from './config/config';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import { MirrorOrchestrator } from './core/mirrorOrchestrator';
 import { auditService } from './services/auditService';
+import { websocketServer } from './websocket/websocketServer';
 import apiRoutes from './api';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Create HTTP server for both Express and WebSocket
+const httpServer = createServer(app);
 
 let orchestrator: MirrorOrchestrator | null = null;
 
@@ -33,6 +38,9 @@ async function main(): Promise<void> {
     // Connect to MongoDB
     await connectDatabase();
 
+    // Initialize WebSocket server
+    websocketServer.initialize(httpServer);
+
     // Create and start the orchestrator
     orchestrator = new MirrorOrchestrator({
       pollingIntervalMs: config.pollingIntervalMs,
@@ -40,13 +48,18 @@ async function main(): Promise<void> {
 
     await orchestrator.start();
 
-    // Start Express server
-    app.listen(PORT, () => {
+    // Start HTTP server (serves both Express and WebSocket)
+    httpServer.listen(PORT, () => {
       console.log(`[Server] API server running on http://localhost:${PORT}`);
+      console.log(`[Server] WebSocket server running on ws://localhost:${PORT}/ws`);
     });
 
     console.log('[Main] Trade mirror system running');
-    console.log(`[Main] Polling interval: ${config.pollingIntervalMs}ms`);
+    if (config.streaming.enabled) {
+      console.log('[Main] Mode: Streaming');
+    } else {
+      console.log(`[Main] Mode: Polling (interval: ${config.pollingIntervalMs}ms)`);
+    }
   } catch (error) {
     console.error('[Main] Failed to start:', error);
     process.exit(1);
@@ -55,6 +68,9 @@ async function main(): Promise<void> {
 
 async function shutdown(): Promise<void> {
   console.log('[Main] Shutting down...');
+
+  // Shutdown WebSocket server
+  websocketServer.shutdown();
 
   if (orchestrator) {
     await orchestrator.stop();

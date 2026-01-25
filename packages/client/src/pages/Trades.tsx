@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/select';
 import { useSourceAccounts } from '@/hooks/useAccounts';
 import { useTrades, usePlaceTrade } from '@/hooks/useTrades';
+import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { TradeTable } from '@/components/trades/TradeTable';
 import { PlaceTradeDialog, TradeFormData } from '@/components/trades/PlaceTradeDialog';
 import { Plus, RefreshCw } from 'lucide-react';
@@ -23,6 +25,9 @@ export default function Trades() {
     selectedSource,
     100
   );
+
+  // Enable real-time updates for selected source
+  useRealTimeUpdates(selectedSource);
 
   // Auto-select first source if none selected
   if (!selectedSource && sources.length > 0) {
@@ -40,7 +45,10 @@ export default function Trades() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold sm:text-3xl">Trades</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold sm:text-3xl">Trades</h1>
+          <ConnectionStatus />
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

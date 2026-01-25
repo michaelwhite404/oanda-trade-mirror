@@ -6,7 +6,8 @@ export function useTrades(sourceId: string | null, limit = 50) {
     queryKey: ['trades', sourceId, limit],
     queryFn: () => (sourceId ? api.getTrades(sourceId, limit) : Promise.resolve([])),
     enabled: !!sourceId,
-    refetchInterval: 5000,
+    // Reduced polling - real-time updates come via WebSocket
+    refetchInterval: 60000,
   });
 }
 

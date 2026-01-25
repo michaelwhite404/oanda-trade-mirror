@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSourceAccounts, useMirrorAccounts } from '@/hooks/useAccounts';
 import { useTrades, useHealth, useLogs, useBalances } from '@/hooks/useTrades';
+import { useGlobalRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { Activity, Users, TrendingUp, AlertCircle, Wallet } from 'lucide-react';
 import { AccountBalance } from '@/api/client';
 
@@ -70,6 +72,9 @@ export default function Dashboard() {
   const { data: logsData } = useLogs({ limit: 10 });
   const { data: balancesData, isLoading: balancesLoading } = useBalances();
 
+  // Enable real-time updates
+  useGlobalRealTimeUpdates();
+
   const firstSourceId = sources[0]?._id;
   const { data: mirrors = [] } = useMirrorAccounts(firstSourceId || null);
   const { data: trades = [] } = useTrades(firstSourceId || null, 10);
@@ -84,7 +89,10 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold sm:text-3xl">Dashboard</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold sm:text-3xl">Dashboard</h1>
+        <ConnectionStatus />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
