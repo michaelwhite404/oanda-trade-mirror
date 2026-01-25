@@ -45,3 +45,11 @@ export function useHealth() {
     refetchInterval: 30000,
   });
 }
+
+export function useBalances() {
+  return useQuery({
+    queryKey: ['balances'],
+    queryFn: () => api.getBalances(),
+    refetchInterval: 60000, // Refresh every minute
+  });
+}

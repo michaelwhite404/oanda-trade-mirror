@@ -1,13 +1,74 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSourceAccounts, useMirrorAccounts } from '@/hooks/useAccounts';
-import { useTrades, useHealth, useLogs } from '@/hooks/useTrades';
-import { Activity, Users, TrendingUp, AlertCircle } from 'lucide-react';
+import { useTrades, useHealth, useLogs, useBalances } from '@/hooks/useTrades';
+import { Activity, Users, TrendingUp, AlertCircle, Wallet } from 'lucide-react';
+import { AccountBalance } from '@/api/client';
+
+function formatCurrency(value: string | undefined, currency: string | undefined) {
+  if (!value) return '—';
+  const num = parseFloat(value);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency || 'USD',
+    minimumFractionDigits: 2,
+  }).format(num);
+}
+
+function BalanceCard({ account, type }: { account: AccountBalance; type: 'source' | 'mirror' }) {
+  const isPositivePL = account.unrealizedPL && parseFloat(account.unrealizedPL) >= 0;
+
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-medium">{account.alias || account.oandaAccountId}</p>
+          {account.alias && (
+            <p className="text-xs text-muted-foreground">{account.oandaAccountId}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant={type === 'source' ? 'default' : 'secondary'}>
+            {type}
+          </Badge>
+          <Badge variant={account.environment === 'live' ? 'destructive' : 'outline'}>
+            {account.environment}
+          </Badge>
+        </div>
+      </div>
+      {account.error ? (
+        <p className="mt-2 text-sm text-destructive">{account.error}</p>
+      ) : (
+        <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <p className="text-muted-foreground">Balance</p>
+            <p className="font-medium">{formatCurrency(account.balance, account.currency)}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Unrealized P/L</p>
+            <p className={`font-medium ${isPositivePL ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(account.unrealizedPL, account.currency)}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">NAV</p>
+            <p className="font-medium">{formatCurrency(account.nav, account.currency)}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Open Trades</p>
+            <p className="font-medium">{account.openTradeCount ?? 0}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { data: sources = [], isLoading: sourcesLoading } = useSourceAccounts();
   const { data: health } = useHealth();
   const { data: logsData } = useLogs({ limit: 10 });
+  const { data: balancesData, isLoading: balancesLoading } = useBalances();
 
   const firstSourceId = sources[0]?._id;
   const { data: mirrors = [] } = useMirrorAccounts(firstSourceId || null);
@@ -88,6 +149,31 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Account Balances
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {balancesLoading ? (
+            <p className="text-sm text-muted-foreground">Loading balances...</p>
+          ) : !balancesData?.sources.length ? (
+            <p className="text-sm text-muted-foreground">No accounts configured</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {balancesData.sources.map((account) => (
+                <BalanceCard key={account.accountId} account={account} type="source" />
+              ))}
+              {balancesData.mirrors.map((account) => (
+                <BalanceCard key={account.accountId} account={account} type="mirror" />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

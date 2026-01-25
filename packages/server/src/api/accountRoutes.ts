@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import { accountService } from '../services/accountService';
 import { OandaEnvironment } from '../types/oanda';
+import { getAccountSummary } from '../oanda/oandaApi';
 
 const router = Router();
 
@@ -227,6 +228,94 @@ router.post('/validate', async (req: Request, res: Response) => {
     );
 
     res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// GET /api/accounts/balances - Get balances for all active accounts
+router.get('/balances', async (_req: Request, res: Response) => {
+  try {
+    const sources = await accountService.getActiveSourceAccounts();
+
+    const balances = await Promise.all(
+      sources.map(async (source) => {
+        try {
+          const summary = await getAccountSummary(
+            source.oandaAccountId,
+            source.apiToken,
+            source.environment
+          );
+
+          return {
+            accountId: source._id,
+            oandaAccountId: source.oandaAccountId,
+            alias: source.alias,
+            environment: source.environment,
+            balance: summary.account.balance,
+            unrealizedPL: summary.account.unrealizedPL,
+            nav: summary.account.NAV,
+            currency: summary.account.currency,
+            openPositionCount: summary.account.openPositionCount,
+            openTradeCount: summary.account.openTradeCount,
+          };
+        } catch (error) {
+          return {
+            accountId: source._id,
+            oandaAccountId: source.oandaAccountId,
+            alias: source.alias,
+            environment: source.environment,
+            error: (error as Error).message,
+          };
+        }
+      })
+    );
+
+    // Also fetch mirror account balances
+    const mirrorBalances = await Promise.all(
+      sources.map(async (source) => {
+        const mirrors = await accountService.getMirrorAccountsForSource(source._id as Types.ObjectId);
+        return Promise.all(
+          mirrors.map(async (mirror) => {
+            try {
+              const summary = await getAccountSummary(
+                mirror.oandaAccountId,
+                mirror.apiToken,
+                mirror.environment
+              );
+
+              return {
+                accountId: mirror._id,
+                sourceAccountId: source._id,
+                oandaAccountId: mirror.oandaAccountId,
+                alias: mirror.alias,
+                environment: mirror.environment,
+                balance: summary.account.balance,
+                unrealizedPL: summary.account.unrealizedPL,
+                nav: summary.account.NAV,
+                currency: summary.account.currency,
+                openPositionCount: summary.account.openPositionCount,
+                openTradeCount: summary.account.openTradeCount,
+              };
+            } catch (error) {
+              return {
+                accountId: mirror._id,
+                sourceAccountId: source._id,
+                oandaAccountId: mirror.oandaAccountId,
+                alias: mirror.alias,
+                environment: mirror.environment,
+                error: (error as Error).message,
+              };
+            }
+          })
+        );
+      })
+    );
+
+    res.json({
+      sources: balances,
+      mirrors: mirrorBalances.flat(),
+    });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

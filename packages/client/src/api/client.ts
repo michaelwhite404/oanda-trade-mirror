@@ -123,6 +123,12 @@ export const api = {
     const response = await fetch(`${BASE_URL}/health`);
     return handleResponse<{ status: string; timestamp: string }>(response);
   },
+
+  // Balances
+  async getBalances() {
+    const response = await fetch(`${BASE_URL}/accounts/balances`);
+    return handleResponse<BalancesResponse>(response);
+  },
 };
 
 // Types
@@ -239,4 +245,24 @@ export interface LogsResponse {
   total: number;
   limit: number;
   offset: number;
+}
+
+export interface AccountBalance {
+  accountId: string;
+  sourceAccountId?: string;
+  oandaAccountId: string;
+  alias: string | null;
+  environment: 'practice' | 'live';
+  balance?: string;
+  unrealizedPL?: string;
+  nav?: string;
+  currency?: string;
+  openPositionCount?: number;
+  openTradeCount?: number;
+  error?: string;
+}
+
+export interface BalancesResponse {
+  sources: AccountBalance[];
+  mirrors: AccountBalance[];
 }
