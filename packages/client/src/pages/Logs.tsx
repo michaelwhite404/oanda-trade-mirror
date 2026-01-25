@@ -39,7 +39,7 @@ export default function Logs() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Logs</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Logs</h1>
         <Button
           variant="outline"
           size="icon"
@@ -52,14 +52,14 @@ export default function Logs() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Execution Logs</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Select
                 value={level}
                 onValueChange={(value) => setLevel(value as LogLevel)}
               >
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-28">
                   <SelectValue placeholder="All levels" />
                 </SelectTrigger>
                 <SelectContent>
@@ -75,7 +75,7 @@ export default function Logs() {
                 value={category}
                 onValueChange={(value) => setCategory(value as LogCategory)}
               >
-                <SelectTrigger className="w-36">
+                <SelectTrigger className="w-32">
                   <SelectValue placeholder="All categories" />
                 </SelectTrigger>
                 <SelectContent>
@@ -91,7 +91,7 @@ export default function Logs() {
                 value={String(limit)}
                 onValueChange={(value) => setLimit(parseInt(value))}
               >
-                <SelectTrigger className="w-24">
+                <SelectTrigger className="w-20">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -111,23 +111,12 @@ export default function Logs() {
             <p className="text-muted-foreground">No logs found</p>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Timestamp</TableHead>
-                    <TableHead>Level</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Details</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.map((log) => (
-                    <TableRow key={log._id}>
-                      <TableCell className="whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </TableCell>
-                      <TableCell>
+              {/* Mobile card view */}
+              <div className="space-y-3 md:hidden">
+                {logs.map((log) => (
+                  <div key={log._id} className="rounded-lg border p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <Badge
                           variant={
                             log.level === 'error'
@@ -141,24 +130,73 @@ export default function Logs() {
                         >
                           {log.level}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
                         <Badge variant="outline">{log.category}</Badge>
-                      </TableCell>
-                      <TableCell>{log.action}</TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {log.details && Object.keys(log.details).length > 0 ? (
-                          <code className="text-xs">
-                            {JSON.stringify(log.details)}
-                          </code>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm">{log.action}</p>
+                    {log.details && Object.keys(log.details).length > 0 && (
+                      <code className="mt-2 block truncate text-xs text-muted-foreground">
+                        {JSON.stringify(log.details)}
+                      </code>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop table view */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Timestamp</TableHead>
+                      <TableHead>Level</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead className="hidden lg:table-cell">Details</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.map((log) => (
+                      <TableRow key={log._id}>
+                        <TableCell className="whitespace-nowrap">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              log.level === 'error'
+                                ? 'destructive'
+                                : log.level === 'warn'
+                                ? 'warning'
+                                : log.level === 'debug'
+                                ? 'outline'
+                                : 'secondary'
+                            }
+                          >
+                            {log.level}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{log.category}</Badge>
+                        </TableCell>
+                        <TableCell>{log.action}</TableCell>
+                        <TableCell className="hidden max-w-xs truncate lg:table-cell">
+                          {log.details && Object.keys(log.details).length > 0 ? (
+                            <code className="text-xs">
+                              {JSON.stringify(log.details)}
+                            </code>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
               <p className="mt-4 text-sm text-muted-foreground">
                 Showing {logs.length} of {data?.total || 0} logs
               </p>

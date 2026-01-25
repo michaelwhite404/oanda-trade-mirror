@@ -39,8 +39,8 @@ export default function Trades() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Trades</h1>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold sm:text-3xl">Trades</h1>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -52,16 +52,17 @@ export default function Trades() {
           </Button>
           <Button onClick={() => setShowPlaceTrade(true)} disabled={!selectedSource}>
             <Plus className="mr-2 h-4 w-4" />
-            Place Trade
+            <span className="hidden sm:inline">Place Trade</span>
+            <span className="sm:hidden">Trade</span>
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Trade History</CardTitle>
-            <div className="w-64">
+            <div className="w-full sm:w-64">
               <Select
                 value={selectedSource || ''}
                 onValueChange={(value) => setSelectedSource(value)}

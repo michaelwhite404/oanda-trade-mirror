@@ -17,6 +17,68 @@ interface TradeTableProps {
   isLoading: boolean;
 }
 
+function MirrorStatusBadges({ trade }: { trade: Trade }) {
+  const successCount = trade.mirrorExecutions.filter((e) => e.status === 'success').length;
+  const failedCount = trade.mirrorExecutions.filter((e) => e.status === 'failed').length;
+  const pendingCount = trade.mirrorExecutions.filter((e) => e.status === 'pending').length;
+  const totalMirrors = trade.mirrorExecutions.length;
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {successCount > 0 && <Badge variant="success">{successCount} success</Badge>}
+      {failedCount > 0 && <Badge variant="destructive">{failedCount} failed</Badge>}
+      {pendingCount > 0 && <Badge variant="warning">{pendingCount} pending</Badge>}
+      {totalMirrors === 0 && <Badge variant="outline">No mirrors</Badge>}
+    </div>
+  );
+}
+
+function MirrorExecutionDetails({ trade }: { trade: Trade }) {
+  return (
+    <div className="mt-3 rounded-lg bg-muted/50 p-3">
+      <h4 className="mb-2 text-sm font-medium">Mirror Executions</h4>
+      {trade.mirrorExecutions.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No mirror accounts were configured when this trade was executed.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {trade.mirrorExecutions.map((exec, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between rounded border bg-background p-2"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{exec.oandaAccountId}</p>
+                <p className="text-xs text-muted-foreground">
+                  {exec.executedUnits ? `${exec.executedUnits} units` : 'Not executed'}
+                </p>
+                {exec.errorMessage && (
+                  <p className="truncate text-xs text-destructive">{exec.errorMessage}</p>
+                )}
+              </div>
+              <Badge
+                variant={
+                  exec.status === 'success'
+                    ? 'success'
+                    : exec.status === 'failed'
+                    ? 'destructive'
+                    : 'warning'
+                }
+              >
+                {exec.status}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 truncate text-xs text-muted-foreground">
+        TXN: {trade.sourceTransactionId}
+      </p>
+    </div>
+  );
+}
+
 export function TradeTable({ trades, isLoading }: TradeTableProps) {
   const [expandedTrade, setExpandedTrade] = useState<string | null>(null);
 
@@ -29,133 +91,159 @@ export function TradeTable({ trades, isLoading }: TradeTableProps) {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-8"></TableHead>
-          <TableHead>Time</TableHead>
-          <TableHead>Instrument</TableHead>
-          <TableHead>Side</TableHead>
-          <TableHead className="text-right">Units</TableHead>
-          <TableHead className="text-right">Price</TableHead>
-          <TableHead>Mirror Status</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <>
+      {/* Mobile card view */}
+      <div className="space-y-3 md:hidden">
         {trades.map((trade) => {
           const isExpanded = expandedTrade === trade._id;
-          const successCount = trade.mirrorExecutions.filter(
-            (e) => e.status === 'success'
-          ).length;
-          const failedCount = trade.mirrorExecutions.filter(
-            (e) => e.status === 'failed'
-          ).length;
-          const pendingCount = trade.mirrorExecutions.filter(
-            (e) => e.status === 'pending'
-          ).length;
-          const totalMirrors = trade.mirrorExecutions.length;
-
           return (
-            <>
-              <TableRow
-                key={trade._id}
-                className="cursor-pointer"
-                onClick={() => setExpandedTrade(isExpanded ? null : trade._id)}
-              >
-                <TableCell>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                    {isExpanded ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </Button>
-                </TableCell>
-                <TableCell>
-                  {new Date(trade.createdAt).toLocaleString()}
-                </TableCell>
-                <TableCell className="font-medium">{trade.instrument}</TableCell>
-                <TableCell>
-                  <Badge variant={trade.side === 'buy' ? 'default' : 'secondary'}>
-                    {trade.side.toUpperCase()}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">{trade.units}</TableCell>
-                <TableCell className="text-right">{trade.price}</TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    {successCount > 0 && (
-                      <Badge variant="success">{successCount} success</Badge>
-                    )}
-                    {failedCount > 0 && (
-                      <Badge variant="destructive">{failedCount} failed</Badge>
-                    )}
-                    {pendingCount > 0 && (
-                      <Badge variant="warning">{pendingCount} pending</Badge>
-                    )}
-                    {totalMirrors === 0 && (
-                      <Badge variant="outline">No mirrors</Badge>
-                    )}
+            <div
+              key={trade._id}
+              className="rounded-lg border p-3"
+              onClick={() => setExpandedTrade(isExpanded ? null : trade._id)}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{trade.instrument}</span>
+                    <Badge variant={trade.side === 'buy' ? 'default' : 'secondary'}>
+                      {trade.side.toUpperCase()}
+                    </Badge>
                   </div>
-                </TableCell>
-              </TableRow>
-              {isExpanded && (
-                <TableRow key={`${trade._id}-details`}>
-                  <TableCell colSpan={7} className="bg-muted/50">
-                    <div className="p-4">
-                      <h4 className="mb-2 font-medium">Mirror Executions</h4>
-                      {trade.mirrorExecutions.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                          No mirror accounts were configured when this trade was executed.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {trade.mirrorExecutions.map((exec, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between rounded border bg-background p-3"
-                            >
-                              <div>
-                                <p className="font-medium">{exec.oandaAccountId}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {exec.executedUnits
-                                    ? `${exec.executedUnits} units`
-                                    : 'Not executed'}
-                                  {exec.oandaTransactionId &&
-                                    ` - TXN: ${exec.oandaTransactionId}`}
-                                </p>
-                                {exec.errorMessage && (
-                                  <p className="text-sm text-destructive">
-                                    {exec.errorMessage}
-                                  </p>
-                                )}
-                              </div>
-                              <Badge
-                                variant={
-                                  exec.status === 'success'
-                                    ? 'success'
-                                    : exec.status === 'failed'
-                                    ? 'destructive'
-                                    : 'warning'
-                                }
-                              >
-                                {exec.status}
-                              </Badge>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Source Transaction ID: {trade.sourceTransactionId}
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {trade.units} @ {trade.price}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(trade.createdAt).toLocaleTimeString()}
+                  </span>
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </div>
+              </div>
+              <div className="mt-2">
+                <MirrorStatusBadges trade={trade} />
+              </div>
+              {isExpanded && <MirrorExecutionDetails trade={trade} />}
+            </div>
           );
         })}
-      </TableBody>
-    </Table>
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-8"></TableHead>
+              <TableHead>Time</TableHead>
+              <TableHead>Instrument</TableHead>
+              <TableHead>Side</TableHead>
+              <TableHead className="text-right">Units</TableHead>
+              <TableHead className="hidden text-right lg:table-cell">Price</TableHead>
+              <TableHead>Mirror Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {trades.map((trade) => {
+              const isExpanded = expandedTrade === trade._id;
+
+              return (
+                <>
+                  <TableRow
+                    key={trade._id}
+                    className="cursor-pointer"
+                    onClick={() => setExpandedTrade(isExpanded ? null : trade._id)}
+                  >
+                    <TableCell>
+                      <Button variant="ghost" size="icon" className="h-6 w-6">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {new Date(trade.createdAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-medium">{trade.instrument}</TableCell>
+                    <TableCell>
+                      <Badge variant={trade.side === 'buy' ? 'default' : 'secondary'}>
+                        {trade.side.toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{trade.units}</TableCell>
+                    <TableCell className="hidden text-right lg:table-cell">
+                      {trade.price}
+                    </TableCell>
+                    <TableCell>
+                      <MirrorStatusBadges trade={trade} />
+                    </TableCell>
+                  </TableRow>
+                  {isExpanded && (
+                    <TableRow key={`${trade._id}-details`}>
+                      <TableCell colSpan={7} className="bg-muted/50">
+                        <div className="p-4">
+                          <h4 className="mb-2 font-medium">Mirror Executions</h4>
+                          {trade.mirrorExecutions.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No mirror accounts were configured when this trade was executed.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {trade.mirrorExecutions.map((exec, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between rounded border bg-background p-3"
+                                >
+                                  <div>
+                                    <p className="font-medium">{exec.oandaAccountId}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {exec.executedUnits
+                                        ? `${exec.executedUnits} units`
+                                        : 'Not executed'}
+                                      {exec.oandaTransactionId &&
+                                        ` - TXN: ${exec.oandaTransactionId}`}
+                                    </p>
+                                    {exec.errorMessage && (
+                                      <p className="text-sm text-destructive">
+                                        {exec.errorMessage}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <Badge
+                                    variant={
+                                      exec.status === 'success'
+                                        ? 'success'
+                                        : exec.status === 'failed'
+                                        ? 'destructive'
+                                        : 'warning'
+                                    }
+                                  >
+                                    {exec.status}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Source Transaction ID: {trade.sourceTransactionId}
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }
