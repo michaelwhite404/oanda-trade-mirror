@@ -1,0 +1,11 @@
+{
+  "name": "oanda-trade-mirror",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @oanda-trade-mirror/client dev",
+    "start": "pnpm --filter @oanda-trade-mirror/server start",
+    "build": "pnpm --filter '*' build",
+    "migrate": "pnpm --filter @oanda-trade-mirror/server migrate"
+  }
+}

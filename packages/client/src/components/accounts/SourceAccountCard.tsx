@@ -1,0 +1,185 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import {
+  useMirrorAccounts,
+  useDeleteSourceAccount,
+  useDeleteMirrorAccount,
+  useUpdateMirrorAccount,
+  useCreateMirrorAccount,
+} from '@/hooks/useAccounts';
+import { SourceAccount } from '@/api/client';
+import { AddAccountDialog, AccountFormData } from './AddAccountDialog';
+import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+
+interface SourceAccountCardProps {
+  source: SourceAccount;
+}
+
+export function SourceAccountCard({ source }: SourceAccountCardProps) {
+  const [showAddMirror, setShowAddMirror] = useState(false);
+  const [editingScaleFactor, setEditingScaleFactor] = useState<string | null>(null);
+  const [newScaleFactor, setNewScaleFactor] = useState('');
+
+  const { data: mirrors = [], isLoading } = useMirrorAccounts(source._id);
+  const deleteSourceMutation = useDeleteSourceAccount();
+  const deleteMirrorMutation = useDeleteMirrorAccount(source._id);
+  const updateMirrorMutation = useUpdateMirrorAccount(source._id);
+  const createMirrorMutation = useCreateMirrorAccount(source._id);
+
+  const handleAddMirror = async (data: AccountFormData) => {
+    await createMirrorMutation.mutateAsync({
+      oandaAccountId: data.oandaAccountId,
+      apiToken: data.apiToken,
+      environment: data.environment,
+      scaleFactor: data.scaleFactor,
+    });
+    setShowAddMirror(false);
+  };
+
+  const handleUpdateScaleFactor = async (mirrorId: string) => {
+    const factor = parseFloat(newScaleFactor);
+    if (isNaN(factor) || factor < 0.01 || factor > 100) return;
+
+    await updateMirrorMutation.mutateAsync({ id: mirrorId, scaleFactor: factor });
+    setEditingScaleFactor(null);
+    setNewScaleFactor('');
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-lg">
+              {source.oandaAccountId}
+            </CardTitle>
+            <div className="mt-1 flex items-center gap-2">
+              <Badge variant={source.environment === 'live' ? 'destructive' : 'secondary'}>
+                {source.environment}
+              </Badge>
+              <Badge variant={source.isActive ? 'success' : 'outline'}>
+                {source.isActive ? 'Active' : 'Inactive'}
+              </Badge>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => deleteSourceMutation.mutate(source._id)}
+            disabled={deleteSourceMutation.isPending}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              {source.lastSyncedAt ? (
+                <>Last synced: {new Date(source.lastSyncedAt).toLocaleString()}</>
+              ) : (
+                <>Never synced</>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="font-medium">Mirror Accounts</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAddMirror(true)}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add Mirror
+                </Button>
+              </div>
+
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              ) : mirrors.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No mirror accounts</p>
+              ) : (
+                <div className="space-y-2">
+                  {mirrors.map((mirror) => (
+                    <div
+                      key={mirror._id}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
+                      <div>
+                        <p className="font-medium">{mirror.oandaAccountId}</p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Badge variant="outline" className="text-xs">
+                            {mirror.environment}
+                          </Badge>
+                          {editingScaleFactor === mirror._id ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                max="100"
+                                value={newScaleFactor}
+                                onChange={(e) => setNewScaleFactor(e.target.value)}
+                                className="h-6 w-20 text-xs"
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleUpdateScaleFactor(mirror._id)}
+                              >
+                                <Check className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => setEditingScaleFactor(null)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <span
+                              className="flex cursor-pointer items-center gap-1 hover:text-foreground"
+                              onClick={() => {
+                                setEditingScaleFactor(mirror._id);
+                                setNewScaleFactor(String(mirror.scaleFactor));
+                              }}
+                            >
+                              Scale: {mirror.scaleFactor}x
+                              <Edit2 className="h-3 w-3" />
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteMirrorMutation.mutate(mirror._id)}
+                        disabled={deleteMirrorMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <AddAccountDialog
+        open={showAddMirror}
+        onOpenChange={setShowAddMirror}
+        onSubmit={handleAddMirror}
+        type="mirror"
+        isSubmitting={createMirrorMutation.isPending}
+      />
+    </>
+  );
+}
