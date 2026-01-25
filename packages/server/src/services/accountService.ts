@@ -8,6 +8,7 @@ interface CreateSourceAccountParams {
   oandaAccountId: string;
   apiToken: string;
   environment: OandaEnvironment;
+  alias?: string;
 }
 
 interface CreateMirrorAccountParams {
@@ -16,6 +17,7 @@ interface CreateMirrorAccountParams {
   apiToken: string;
   environment: OandaEnvironment;
   scaleFactor?: number;
+  alias?: string;
 }
 
 class AccountService {
@@ -64,6 +66,7 @@ class AccountService {
       oandaAccountId: params.oandaAccountId,
       apiToken: params.apiToken,
       environment: params.environment,
+      alias: params.alias || null,
       isActive: true,
       lastTransactionId: null,
       lastSyncedAt: null,
@@ -100,6 +103,7 @@ class AccountService {
       oandaAccountId: params.oandaAccountId,
       apiToken: params.apiToken,
       environment: params.environment,
+      alias: params.alias || null,
       scaleFactor: params.scaleFactor ?? 1.0,
       isActive: true,
     });
@@ -166,6 +170,24 @@ class AccountService {
     await auditService.info('account', 'Mirror account scale factor updated', {
       mirrorAccountId,
       details: { scaleFactor },
+    });
+  }
+
+  async updateSourceAccountAlias(sourceAccountId: Types.ObjectId, alias: string | null): Promise<void> {
+    await SourceAccount.findByIdAndUpdate(sourceAccountId, { alias });
+
+    await auditService.info('account', 'Source account alias updated', {
+      sourceAccountId,
+      details: { alias },
+    });
+  }
+
+  async updateMirrorAccountAlias(mirrorAccountId: Types.ObjectId, alias: string | null): Promise<void> {
+    await MirrorAccount.findByIdAndUpdate(mirrorAccountId, { alias });
+
+    await auditService.info('account', 'Mirror account alias updated', {
+      mirrorAccountId,
+      details: { alias },
     });
   }
 }

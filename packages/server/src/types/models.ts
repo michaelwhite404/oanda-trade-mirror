@@ -24,6 +24,7 @@ export interface ISourceAccount {
   oandaAccountId: string;
   apiToken: string;
   environment: OandaEnvironment;
+  alias: string | null;
   isActive: boolean;
   lastTransactionId: string | null;
   lastSyncedAt: Date | null;
@@ -36,6 +37,7 @@ export interface IMirrorAccount {
   oandaAccountId: string;
   apiToken: string;
   environment: OandaEnvironment;
+  alias: string | null;
   scaleFactor: number;
   isActive: boolean;
   createdAt?: Date;

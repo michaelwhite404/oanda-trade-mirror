@@ -14,6 +14,7 @@ router.get('/sources', async (_req: Request, res: Response) => {
       _id: s._id,
       oandaAccountId: s.oandaAccountId,
       environment: s.environment,
+      alias: s.alias,
       isActive: s.isActive,
       lastTransactionId: s.lastTransactionId,
       lastSyncedAt: s.lastSyncedAt,
@@ -29,7 +30,7 @@ router.get('/sources', async (_req: Request, res: Response) => {
 // POST /api/accounts/sources - Create a new source account
 router.post('/sources', async (req: Request, res: Response) => {
   try {
-    const { oandaAccountId, apiToken, environment } = req.body;
+    const { oandaAccountId, apiToken, environment, alias } = req.body;
 
     if (!oandaAccountId || !apiToken) {
       res.status(400).json({ error: 'oandaAccountId and apiToken are required' });
@@ -40,12 +41,14 @@ router.post('/sources', async (req: Request, res: Response) => {
       oandaAccountId,
       apiToken,
       environment: (environment as OandaEnvironment) || 'practice',
+      alias: alias || undefined,
     });
 
     res.status(201).json({
       _id: source._id,
       oandaAccountId: source.oandaAccountId,
       environment: source.environment,
+      alias: source.alias,
       isActive: source.isActive,
       createdAt: source.createdAt,
     });
@@ -89,6 +92,7 @@ router.get('/sources/:id/mirrors', async (req: Request, res: Response) => {
       sourceAccountId: m.sourceAccountId,
       oandaAccountId: m.oandaAccountId,
       environment: m.environment,
+      alias: m.alias,
       scaleFactor: m.scaleFactor,
       isActive: m.isActive,
       createdAt: m.createdAt,
@@ -110,7 +114,7 @@ router.post('/sources/:id/mirrors', async (req: Request, res: Response) => {
       return;
     }
 
-    const { oandaAccountId, apiToken, environment, scaleFactor } = req.body;
+    const { oandaAccountId, apiToken, environment, scaleFactor, alias } = req.body;
 
     if (!oandaAccountId || !apiToken) {
       res.status(400).json({ error: 'oandaAccountId and apiToken are required' });
@@ -123,6 +127,7 @@ router.post('/sources/:id/mirrors', async (req: Request, res: Response) => {
       apiToken,
       environment: (environment as OandaEnvironment) || 'practice',
       scaleFactor: scaleFactor || 1.0,
+      alias: alias || undefined,
     });
 
     res.status(201).json({
@@ -130,6 +135,7 @@ router.post('/sources/:id/mirrors', async (req: Request, res: Response) => {
       sourceAccountId: mirror.sourceAccountId,
       oandaAccountId: mirror.oandaAccountId,
       environment: mirror.environment,
+      alias: mirror.alias,
       scaleFactor: mirror.scaleFactor,
       isActive: mirror.isActive,
       createdAt: mirror.createdAt,
@@ -155,7 +161,30 @@ router.delete('/mirrors/:id', async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/accounts/mirrors/:id - Update a mirror account (scale factor)
+// PATCH /api/accounts/sources/:id - Update a source account (alias)
+router.patch('/sources/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!Types.ObjectId.isValid(id)) {
+      res.status(400).json({ error: 'Invalid source account ID' });
+      return;
+    }
+
+    const { alias } = req.body;
+    if (alias !== undefined) {
+      await accountService.updateSourceAccountAlias(
+        new Types.ObjectId(id),
+        alias || null
+      );
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+// PATCH /api/accounts/mirrors/:id - Update a mirror account (scale factor, alias)
 router.patch('/mirrors/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -164,12 +193,15 @@ router.patch('/mirrors/:id', async (req: Request, res: Response) => {
       return;
     }
 
-    const { scaleFactor } = req.body;
+    const { scaleFactor, alias } = req.body;
+    const mirrorId = new Types.ObjectId(id);
+
     if (scaleFactor !== undefined) {
-      await accountService.updateScaleFactor(
-        new Types.ObjectId(id),
-        scaleFactor
-      );
+      await accountService.updateScaleFactor(mirrorId, scaleFactor);
+    }
+
+    if (alias !== undefined) {
+      await accountService.updateMirrorAccountAlias(mirrorId, alias || null);
     }
 
     res.json({ success: true });

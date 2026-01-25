@@ -15,6 +15,7 @@ export default function Accounts() {
       oandaAccountId: data.oandaAccountId,
       apiToken: data.apiToken,
       environment: data.environment,
+      alias: data.alias || undefined,
     });
     setShowAddSource(false);
   };

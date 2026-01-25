@@ -36,6 +36,15 @@ export const api = {
     return handleResponse<{ success: boolean }>(response);
   },
 
+  async updateSourceAccount(id: string, data: { alias?: string }) {
+    const response = await fetch(`${BASE_URL}/accounts/sources/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleResponse<{ success: boolean }>(response);
+  },
+
   // Mirror Accounts
   async getMirrorAccounts(sourceId: string) {
     const response = await fetch(`${BASE_URL}/accounts/sources/${sourceId}/mirrors`);
@@ -58,7 +67,7 @@ export const api = {
     return handleResponse<{ success: boolean }>(response);
   },
 
-  async updateMirrorAccount(id: string, data: { scaleFactor: number }) {
+  async updateMirrorAccount(id: string, data: { scaleFactor?: number; alias?: string }) {
     const response = await fetch(`${BASE_URL}/accounts/mirrors/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -121,6 +130,7 @@ export interface SourceAccount {
   _id: string;
   oandaAccountId: string;
   environment: 'practice' | 'live';
+  alias: string | null;
   isActive: boolean;
   lastTransactionId: string | null;
   lastSyncedAt: string | null;
@@ -133,6 +143,7 @@ export interface MirrorAccount {
   sourceAccountId: string;
   oandaAccountId: string;
   environment: 'practice' | 'live';
+  alias: string | null;
   scaleFactor: number;
   isActive: boolean;
   createdAt: string;
@@ -179,6 +190,7 @@ export interface CreateSourceAccountRequest {
   oandaAccountId: string;
   apiToken: string;
   environment: 'practice' | 'live';
+  alias?: string;
 }
 
 export interface CreateMirrorAccountRequest {
@@ -186,6 +198,7 @@ export interface CreateMirrorAccountRequest {
   apiToken: string;
   environment: 'practice' | 'live';
   scaleFactor?: number;
+  alias?: string;
 }
 
 export interface ValidateCredentialsRequest {

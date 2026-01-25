@@ -74,7 +74,7 @@ export default function Trades() {
                 <SelectContent>
                   {sources.map((source) => (
                     <SelectItem key={source._id} value={source._id}>
-                      {source.oandaAccountId} ({source.environment})
+                      {source.alias || source.oandaAccountId} ({source.environment})
                     </SelectItem>
                   ))}
                 </SelectContent>

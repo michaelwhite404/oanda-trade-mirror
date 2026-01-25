@@ -21,6 +21,10 @@ const SourceAccountSchema = new Schema<SourceAccountDocument>(
       required: true,
       default: 'practice',
     },
+    alias: {
+      type: String,
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,

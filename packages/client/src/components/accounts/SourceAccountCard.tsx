@@ -9,6 +9,7 @@ import {
   useDeleteMirrorAccount,
   useUpdateMirrorAccount,
   useCreateMirrorAccount,
+  useUpdateSourceAccount,
 } from '@/hooks/useAccounts';
 import { SourceAccount } from '@/api/client';
 import { AddAccountDialog, AccountFormData } from './AddAccountDialog';
@@ -22,12 +23,17 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
   const [showAddMirror, setShowAddMirror] = useState(false);
   const [editingScaleFactor, setEditingScaleFactor] = useState<string | null>(null);
   const [newScaleFactor, setNewScaleFactor] = useState('');
+  const [editingSourceAlias, setEditingSourceAlias] = useState(false);
+  const [newSourceAlias, setNewSourceAlias] = useState('');
+  const [editingMirrorAlias, setEditingMirrorAlias] = useState<string | null>(null);
+  const [newMirrorAlias, setNewMirrorAlias] = useState('');
 
   const { data: mirrors = [], isLoading } = useMirrorAccounts(source._id);
   const deleteSourceMutation = useDeleteSourceAccount();
   const deleteMirrorMutation = useDeleteMirrorAccount(source._id);
   const updateMirrorMutation = useUpdateMirrorAccount(source._id);
   const createMirrorMutation = useCreateMirrorAccount(source._id);
+  const updateSourceMutation = useUpdateSourceAccount();
 
   const handleAddMirror = async (data: AccountFormData) => {
     await createMirrorMutation.mutateAsync({
@@ -35,6 +41,7 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
       apiToken: data.apiToken,
       environment: data.environment,
       scaleFactor: data.scaleFactor,
+      alias: data.alias || undefined,
     });
     setShowAddMirror(false);
   };
@@ -48,14 +55,63 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
     setNewScaleFactor('');
   };
 
+  const handleUpdateSourceAlias = async () => {
+    await updateSourceMutation.mutateAsync({ id: source._id, alias: newSourceAlias || undefined });
+    setEditingSourceAlias(false);
+    setNewSourceAlias('');
+  };
+
+  const handleUpdateMirrorAlias = async (mirrorId: string) => {
+    await updateMirrorMutation.mutateAsync({ id: mirrorId, alias: newMirrorAlias || undefined });
+    setEditingMirrorAlias(null);
+    setNewMirrorAlias('');
+  };
+
   return (
     <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-lg">
-              {source.oandaAccountId}
-            </CardTitle>
+            {editingSourceAlias ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newSourceAlias}
+                  onChange={(e) => setNewSourceAlias(e.target.value)}
+                  placeholder="Enter alias"
+                  className="h-8 w-48"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleUpdateSourceAlias}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setEditingSourceAlias(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <CardTitle
+                className="flex cursor-pointer items-center gap-2 text-lg hover:text-muted-foreground"
+                onClick={() => {
+                  setEditingSourceAlias(true);
+                  setNewSourceAlias(source.alias || '');
+                }}
+              >
+                {source.alias || source.oandaAccountId}
+                <Edit2 className="h-4 w-4" />
+              </CardTitle>
+            )}
+            {!editingSourceAlias && source.alias && (
+              <p className="text-sm text-muted-foreground">{source.oandaAccountId}</p>
+            )}
             <div className="mt-1 flex items-center gap-2">
               <Badge variant={source.environment === 'live' ? 'destructive' : 'secondary'}>
                 {source.environment}
@@ -109,7 +165,46 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
                       className="flex items-center justify-between rounded-lg border p-3"
                     >
                       <div>
-                        <p className="font-medium">{mirror.oandaAccountId}</p>
+                        {editingMirrorAlias === mirror._id ? (
+                          <div className="mb-1 flex items-center gap-1">
+                            <Input
+                              value={newMirrorAlias}
+                              onChange={(e) => setNewMirrorAlias(e.target.value)}
+                              placeholder="Enter alias"
+                              className="h-6 w-32 text-sm"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleUpdateMirrorAlias(mirror._id)}
+                            >
+                              <Check className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => setEditingMirrorAlias(null)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <p
+                            className="flex cursor-pointer items-center gap-1 font-medium hover:text-muted-foreground"
+                            onClick={() => {
+                              setEditingMirrorAlias(mirror._id);
+                              setNewMirrorAlias(mirror.alias || '');
+                            }}
+                          >
+                            {mirror.alias || mirror.oandaAccountId}
+                            <Edit2 className="h-3 w-3" />
+                          </p>
+                        )}
+                        {!editingMirrorAlias && mirror.alias && (
+                          <p className="text-xs text-muted-foreground">{mirror.oandaAccountId}</p>
+                        )}
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Badge variant="outline" className="text-xs">
                             {mirror.environment}

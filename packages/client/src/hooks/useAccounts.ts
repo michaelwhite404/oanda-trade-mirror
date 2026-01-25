@@ -43,6 +43,18 @@ export function useDeleteSourceAccount() {
   });
 }
 
+export function useUpdateSourceAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, alias }: { id: string; alias?: string }) =>
+      api.updateSourceAccount(id, { alias }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sourceAccounts'] });
+    },
+  });
+}
+
 export function useCreateMirrorAccount(sourceId: string) {
   const queryClient = useQueryClient();
 
@@ -69,8 +81,8 @@ export function useUpdateMirrorAccount(sourceId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, scaleFactor }: { id: string; scaleFactor: number }) =>
-      api.updateMirrorAccount(id, { scaleFactor }),
+    mutationFn: ({ id, scaleFactor, alias }: { id: string; scaleFactor?: number; alias?: string }) =>
+      api.updateMirrorAccount(id, { scaleFactor, alias }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mirrorAccounts', sourceId] });
     },

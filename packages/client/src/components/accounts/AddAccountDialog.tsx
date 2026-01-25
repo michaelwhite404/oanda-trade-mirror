@@ -32,6 +32,7 @@ export interface AccountFormData {
   apiToken: string;
   environment: 'practice' | 'live';
   scaleFactor?: number;
+  alias?: string;
 }
 
 export function AddAccountDialog({
@@ -46,6 +47,7 @@ export function AddAccountDialog({
     apiToken: '',
     environment: 'practice',
     scaleFactor: 1.0,
+    alias: '',
   });
   const [validationError, setValidationError] = useState<string | null>(null);
   const validateMutation = useValidateCredentials();
@@ -73,6 +75,7 @@ export function AddAccountDialog({
         apiToken: '',
         environment: 'practice',
         scaleFactor: 1.0,
+        alias: '',
       });
     } catch (error) {
       setValidationError((error as Error).message);
@@ -104,6 +107,21 @@ export function AddAccountDialog({
               placeholder="XXX-XXX-XXXXXXXX-XXX"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="alias">Alias (optional)</Label>
+            <Input
+              id="alias"
+              value={formData.alias}
+              onChange={(e) =>
+                setFormData({ ...formData, alias: e.target.value })
+              }
+              placeholder="e.g., Main Trading, Test Account"
+            />
+            <p className="text-xs text-muted-foreground">
+              A friendly name to help identify this account
+            </p>
           </div>
 
           <div className="space-y-2">

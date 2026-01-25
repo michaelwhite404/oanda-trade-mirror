@@ -26,6 +26,10 @@ const MirrorAccountSchema = new Schema<MirrorAccountDocument>(
       required: true,
       default: 'practice',
     },
+    alias: {
+      type: String,
+      default: null,
+    },
     scaleFactor: {
       type: Number,
       default: 1.0,
