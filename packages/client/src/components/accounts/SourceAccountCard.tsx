@@ -11,8 +11,9 @@ import {
   useCreateMirrorAccount,
   useUpdateSourceAccount,
 } from '@/hooks/useAccounts';
-import { SourceAccount } from '@/api/client';
+import { SourceAccount, MirrorAccount } from '@/api/client';
 import { AddAccountDialog, AccountFormData } from './AddAccountDialog';
+import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 
 interface SourceAccountCardProps {
@@ -27,6 +28,8 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
   const [newSourceAlias, setNewSourceAlias] = useState('');
   const [editingMirrorAlias, setEditingMirrorAlias] = useState<string | null>(null);
   const [newMirrorAlias, setNewMirrorAlias] = useState('');
+  const [showDeleteSource, setShowDeleteSource] = useState(false);
+  const [mirrorToDelete, setMirrorToDelete] = useState<MirrorAccount | null>(null);
 
   const { data: mirrors = [], isLoading } = useMirrorAccounts(source._id);
   const deleteSourceMutation = useDeleteSourceAccount();
@@ -65,6 +68,18 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
     await updateMirrorMutation.mutateAsync({ id: mirrorId, alias: newMirrorAlias || undefined });
     setEditingMirrorAlias(null);
     setNewMirrorAlias('');
+  };
+
+  const handleDeleteSource = async () => {
+    await deleteSourceMutation.mutateAsync(source._id);
+    setShowDeleteSource(false);
+  };
+
+  const handleDeleteMirror = async () => {
+    if (mirrorToDelete) {
+      await deleteMirrorMutation.mutateAsync(mirrorToDelete._id);
+      setMirrorToDelete(null);
+    }
   };
 
   return (
@@ -124,8 +139,7 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => deleteSourceMutation.mutate(source._id)}
-            disabled={deleteSourceMutation.isPending}
+            onClick={() => setShowDeleteSource(true)}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -254,8 +268,7 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => deleteMirrorMutation.mutate(mirror._id)}
-                        disabled={deleteMirrorMutation.isPending}
+                        onClick={() => setMirrorToDelete(mirror)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -275,6 +288,28 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
         type="mirror"
         isSubmitting={createMirrorMutation.isPending}
       />
+
+      <DeleteConfirmDialog
+        open={showDeleteSource}
+        onOpenChange={setShowDeleteSource}
+        onConfirm={handleDeleteSource}
+        accountId={source.oandaAccountId}
+        accountName={source.alias || source.oandaAccountId}
+        type="source"
+        isDeleting={deleteSourceMutation.isPending}
+      />
+
+      {mirrorToDelete && (
+        <DeleteConfirmDialog
+          open={!!mirrorToDelete}
+          onOpenChange={(open) => !open && setMirrorToDelete(null)}
+          onConfirm={handleDeleteMirror}
+          accountId={mirrorToDelete.oandaAccountId}
+          accountName={mirrorToDelete.alias || mirrorToDelete.oandaAccountId}
+          type="mirror"
+          isDeleting={deleteMirrorMutation.isPending}
+        />
+      )}
     </>
   );
 }
