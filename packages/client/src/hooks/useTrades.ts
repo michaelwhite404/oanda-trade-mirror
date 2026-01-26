@@ -71,3 +71,11 @@ export function usePositions() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 }
+
+export function useStats() {
+  return useQuery({
+    queryKey: ['stats'],
+    queryFn: () => api.getStats(),
+    refetchInterval: 60000, // Refresh every minute
+  });
+}

@@ -143,6 +143,12 @@ export const api = {
     const response = await fetch(`${BASE_URL}/accounts/positions`);
     return handleResponse<PositionsResponse>(response);
   },
+
+  // Stats
+  async getStats() {
+    const response = await fetch(`${BASE_URL}/accounts/stats`);
+    return handleResponse<StatsResponse>(response);
+  },
 };
 
 // Types
@@ -322,4 +328,31 @@ export interface AccountPositions {
 export interface PositionsResponse {
   sources: AccountPositions[];
   mirrors: AccountPositions[];
+}
+
+export interface AccountStats {
+  totalRealizedPL: number;
+  winCount: number;
+  lossCount: number;
+  winRate: number;
+  avgWin: number;
+  avgLoss: number;
+  totalTrades: number;
+  tradesToday: number;
+  mirrorSuccessCount: number;
+  mirrorFailedCount: number;
+  mirrorSuccessRate: number;
+}
+
+export interface AccountStatsData {
+  accountId: string;
+  oandaAccountId: string;
+  alias: string | null;
+  environment: 'practice' | 'live';
+  stats?: AccountStats;
+  error?: string;
+}
+
+export interface StatsResponse {
+  accounts: AccountStatsData[];
 }

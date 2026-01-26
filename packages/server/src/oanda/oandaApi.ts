@@ -79,3 +79,38 @@ export const getOpenPositions = async (
   });
   return response.data;
 };
+
+export const getTransactionHistory = async (
+  accountId: string,
+  token: string,
+  environment: OandaEnvironment = 'practice',
+  from?: string,
+  to?: string,
+  type?: string
+) => {
+  const baseUrl = getOandaBaseUrl(environment);
+  const params: Record<string, string> = {};
+  if (from) params.from = from;
+  if (to) params.to = to;
+  if (type) params.type = type;
+
+  const response = await axios.get(`${baseUrl}/accounts/${accountId}/transactions`, {
+    params,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
+export const getTransactionDetails = async (
+  accountId: string,
+  token: string,
+  transactionIds: string[],
+  environment: OandaEnvironment = 'practice'
+) => {
+  const baseUrl = getOandaBaseUrl(environment);
+  const response = await axios.get(`${baseUrl}/accounts/${accountId}/transactions/idrange`, {
+    params: { from: transactionIds[0], to: transactionIds[transactionIds.length - 1] },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};

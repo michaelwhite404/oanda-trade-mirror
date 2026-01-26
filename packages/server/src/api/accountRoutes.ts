@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import { accountService } from '../services/accountService';
 import { OandaEnvironment } from '../types/oanda';
-import { getAccountSummary, getOpenPositions } from '../oanda/oandaApi';
+import { getAccountSummary, getOpenPositions, getTransactionHistory, getTransactionDetails } from '../oanda/oandaApi';
+import { TradeHistory } from '../db';
 
 const router = Router();
 
@@ -446,6 +447,138 @@ router.get('/positions', async (_req: Request, res: Response) => {
       sources: sourcePositions,
       mirrors: mirrorPositions.flat(),
     });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// GET /api/accounts/stats - Get P&L summary and trade statistics
+router.get('/stats', async (_req: Request, res: Response) => {
+  try {
+    const sources = await accountService.getActiveSourceAccounts();
+
+    // Get stats for each source account
+    const stats = await Promise.all(
+      sources.map(async (source) => {
+        try {
+          // Get transaction IDs for ORDER_FILL transactions in the last 30 days
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+          const txnData = await getTransactionHistory(
+            source.oandaAccountId,
+            source.apiToken,
+            source.environment,
+            thirtyDaysAgo.toISOString(),
+            undefined,
+            'ORDER_FILL'
+          );
+
+          // Get detailed transactions if we have any
+          let transactions: Array<{
+            id: string;
+            type: string;
+            instrument?: string;
+            units?: string;
+            pl?: string;
+            time: string;
+            reason?: string;
+          }> = [];
+
+          if (txnData.pages && txnData.pages.length > 0) {
+            // Fetch transaction details from the first page
+            const pageUrl = txnData.pages[0];
+            const match = pageUrl.match(/from=(\d+)&to=(\d+)/);
+            if (match) {
+              const details = await getTransactionDetails(
+                source.oandaAccountId,
+                source.apiToken,
+                [match[1], match[2]],
+                source.environment
+              );
+              transactions = details.transactions || [];
+            }
+          }
+
+          // Filter for ORDER_FILL transactions with P/L (closed trades)
+          const closedTrades = transactions.filter(
+            (t) => t.type === 'ORDER_FILL' && t.pl && parseFloat(t.pl) !== 0
+          );
+
+          // Calculate statistics
+          const wins = closedTrades.filter((t) => parseFloat(t.pl!) > 0);
+          const losses = closedTrades.filter((t) => parseFloat(t.pl!) < 0);
+
+          const totalPL = closedTrades.reduce((sum, t) => sum + parseFloat(t.pl!), 0);
+          const totalWinPL = wins.reduce((sum, t) => sum + parseFloat(t.pl!), 0);
+          const totalLossPL = losses.reduce((sum, t) => sum + parseFloat(t.pl!), 0);
+
+          const winRate = closedTrades.length > 0 ? (wins.length / closedTrades.length) * 100 : 0;
+          const avgWin = wins.length > 0 ? totalWinPL / wins.length : 0;
+          const avgLoss = losses.length > 0 ? totalLossPL / losses.length : 0;
+
+          // Get trade counts from our database
+          const dbTradeCount = await TradeHistory.countDocuments({
+            sourceAccountId: source._id,
+          });
+
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+          const todayTradeCount = await TradeHistory.countDocuments({
+            sourceAccountId: source._id,
+            createdAt: { $gte: todayStart },
+          });
+
+          // Get mirror execution stats
+          const mirrorStats = await TradeHistory.aggregate([
+            { $match: { sourceAccountId: source._id } },
+            { $unwind: '$mirrorExecutions' },
+            {
+              $group: {
+                _id: '$mirrorExecutions.status',
+                count: { $sum: 1 },
+              },
+            },
+          ]);
+
+          const mirrorSuccessCount = mirrorStats.find((s) => s._id === 'success')?.count || 0;
+          const mirrorFailedCount = mirrorStats.find((s) => s._id === 'failed')?.count || 0;
+
+          return {
+            accountId: source._id,
+            oandaAccountId: source.oandaAccountId,
+            alias: source.alias,
+            environment: source.environment,
+            stats: {
+              totalRealizedPL: totalPL,
+              winCount: wins.length,
+              lossCount: losses.length,
+              winRate: winRate,
+              avgWin: avgWin,
+              avgLoss: avgLoss,
+              totalTrades: dbTradeCount,
+              tradesToday: todayTradeCount,
+              mirrorSuccessCount,
+              mirrorFailedCount,
+              mirrorSuccessRate:
+                mirrorSuccessCount + mirrorFailedCount > 0
+                  ? (mirrorSuccessCount / (mirrorSuccessCount + mirrorFailedCount)) * 100
+                  : 100,
+            },
+          };
+        } catch (error) {
+          return {
+            accountId: source._id,
+            oandaAccountId: source.oandaAccountId,
+            alias: source.alias,
+            environment: source.environment,
+            error: (error as Error).message,
+          };
+        }
+      })
+    );
+
+    res.json({ accounts: stats });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

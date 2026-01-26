@@ -5,6 +5,7 @@ import { useTrades, useHealth, useLogs, useBalances } from '@/hooks/useTrades';
 import { useGlobalRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { OpenPositions } from '@/components/positions/OpenPositions';
+import { TradeStats } from '@/components/stats/TradeStats';
 import { Activity, Users, TrendingUp, AlertCircle, Wallet } from 'lucide-react';
 import { AccountBalance } from '@/api/client';
 
@@ -185,6 +186,8 @@ export default function Dashboard() {
       </Card>
 
       <OpenPositions />
+
+      <TradeStats />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
