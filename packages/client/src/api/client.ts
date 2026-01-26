@@ -137,6 +137,12 @@ export const api = {
     const response = await fetch(`${BASE_URL}/accounts/balances`);
     return handleResponse<BalancesResponse>(response);
   },
+
+  // Positions
+  async getPositions() {
+    const response = await fetch(`${BASE_URL}/accounts/positions`);
+    return handleResponse<PositionsResponse>(response);
+  },
 };
 
 // Types
@@ -286,4 +292,34 @@ export interface AccountBalance {
 export interface BalancesResponse {
   sources: AccountBalance[];
   mirrors: AccountBalance[];
+}
+
+export interface PositionSide {
+  units: string;
+  averagePrice: string;
+  pl: string;
+  unrealizedPL: string;
+}
+
+export interface Position {
+  instrument: string;
+  long: PositionSide | null;
+  short: PositionSide | null;
+  unrealizedPL: string;
+}
+
+export interface AccountPositions {
+  accountId: string;
+  sourceAccountId?: string;
+  oandaAccountId: string;
+  alias: string | null;
+  environment: 'practice' | 'live';
+  accountType: 'source' | 'mirror';
+  positions: Position[];
+  error?: string;
+}
+
+export interface PositionsResponse {
+  sources: AccountPositions[];
+  mirrors: AccountPositions[];
 }

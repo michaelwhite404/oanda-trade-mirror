@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import { accountService } from '../services/accountService';
 import { OandaEnvironment } from '../types/oanda';
-import { getAccountSummary } from '../oanda/oandaApi';
+import { getAccountSummary, getOpenPositions } from '../oanda/oandaApi';
 
 const router = Router();
 
@@ -322,6 +322,129 @@ router.get('/balances', async (_req: Request, res: Response) => {
     res.json({
       sources: balances,
       mirrors: mirrorBalances.flat(),
+    });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// GET /api/accounts/positions - Get open positions for all active accounts
+router.get('/positions', async (_req: Request, res: Response) => {
+  try {
+    const sources = await accountService.getActiveSourceAccounts();
+
+    const sourcePositions = await Promise.all(
+      sources.map(async (source) => {
+        try {
+          const data = await getOpenPositions(
+            source.oandaAccountId,
+            source.apiToken,
+            source.environment
+          );
+
+          return {
+            accountId: source._id,
+            oandaAccountId: source.oandaAccountId,
+            alias: source.alias,
+            environment: source.environment,
+            accountType: 'source' as const,
+            positions: data.positions.map((pos: {
+              instrument: string;
+              long: { units: string; averagePrice: string; pl: string; unrealizedPL: string };
+              short: { units: string; averagePrice: string; pl: string; unrealizedPL: string };
+              unrealizedPL: string;
+            }) => ({
+              instrument: pos.instrument,
+              long: pos.long.units !== '0' ? {
+                units: pos.long.units,
+                averagePrice: pos.long.averagePrice,
+                pl: pos.long.pl,
+                unrealizedPL: pos.long.unrealizedPL,
+              } : null,
+              short: pos.short.units !== '0' ? {
+                units: pos.short.units,
+                averagePrice: pos.short.averagePrice,
+                pl: pos.short.pl,
+                unrealizedPL: pos.short.unrealizedPL,
+              } : null,
+              unrealizedPL: pos.unrealizedPL,
+            })),
+          };
+        } catch (error) {
+          return {
+            accountId: source._id,
+            oandaAccountId: source.oandaAccountId,
+            alias: source.alias,
+            environment: source.environment,
+            accountType: 'source' as const,
+            positions: [],
+            error: (error as Error).message,
+          };
+        }
+      })
+    );
+
+    const mirrorPositions = await Promise.all(
+      sources.map(async (source) => {
+        const mirrors = await accountService.getMirrorAccountsForSource(source._id as Types.ObjectId);
+        return Promise.all(
+          mirrors.map(async (mirror) => {
+            try {
+              const data = await getOpenPositions(
+                mirror.oandaAccountId,
+                mirror.apiToken,
+                mirror.environment
+              );
+
+              return {
+                accountId: mirror._id,
+                sourceAccountId: source._id,
+                oandaAccountId: mirror.oandaAccountId,
+                alias: mirror.alias,
+                environment: mirror.environment,
+                accountType: 'mirror' as const,
+                positions: data.positions.map((pos: {
+                  instrument: string;
+                  long: { units: string; averagePrice: string; pl: string; unrealizedPL: string };
+                  short: { units: string; averagePrice: string; pl: string; unrealizedPL: string };
+                  unrealizedPL: string;
+                }) => ({
+                  instrument: pos.instrument,
+                  long: pos.long.units !== '0' ? {
+                    units: pos.long.units,
+                    averagePrice: pos.long.averagePrice,
+                    pl: pos.long.pl,
+                    unrealizedPL: pos.long.unrealizedPL,
+                  } : null,
+                  short: pos.short.units !== '0' ? {
+                    units: pos.short.units,
+                    averagePrice: pos.short.averagePrice,
+                    pl: pos.short.pl,
+                    unrealizedPL: pos.short.unrealizedPL,
+                  } : null,
+                  unrealizedPL: pos.unrealizedPL,
+                })),
+              };
+            } catch (error) {
+              return {
+                accountId: mirror._id,
+                sourceAccountId: source._id,
+                oandaAccountId: mirror.oandaAccountId,
+                alias: mirror.alias,
+                environment: mirror.environment,
+                accountType: 'mirror' as const,
+                positions: [],
+                error: (error as Error).message,
+              };
+            }
+          })
+        );
+      })
+    );
+
+    res.json({
+      sources: sourcePositions,
+      mirrors: mirrorPositions.flat(),
     });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });

@@ -63,3 +63,11 @@ export function useBalances() {
     refetchInterval: 60000, // Refresh every minute
   });
 }
+
+export function usePositions() {
+  return useQuery({
+    queryKey: ['positions'],
+    queryFn: () => api.getPositions(),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+}

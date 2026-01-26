@@ -67,3 +67,15 @@ export const getTransactionsSinceId = async (
   });
   return response.data;
 };
+
+export const getOpenPositions = async (
+  accountId: string,
+  token: string,
+  environment: OandaEnvironment = 'practice'
+) => {
+  const baseUrl = getOandaBaseUrl(environment);
+  const response = await axios.get(`${baseUrl}/accounts/${accountId}/openPositions`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};

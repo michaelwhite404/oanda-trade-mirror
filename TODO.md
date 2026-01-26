@@ -6,7 +6,7 @@
 
 ## Dashboard Enhancements
 - [x] Account balances fetched from OANDA API
-- [ ] Open positions view across all accounts
+- [x] Open positions view across all accounts
 - [ ] P&L summary / trade statistics (win rate, total profit/loss)
 - [ ] Connection status indicator showing if OANDA API is reachable
 
