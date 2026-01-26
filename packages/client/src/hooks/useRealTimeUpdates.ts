@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useWebSocketContext, WebSocketMessage } from '@/context/WebSocketContext';
 
 export function useRealTimeUpdates(sourceAccountId: string | null) {
@@ -48,11 +49,39 @@ export function useGlobalRealTimeUpdates() {
     const removeHandler = addMessageHandler((message: WebSocketMessage) => {
       switch (message.type) {
         case 'trade:new':
+          // Invalidate all trades queries
+          queryClient.invalidateQueries({ queryKey: ['trades'] });
+          queryClient.invalidateQueries({ queryKey: ['logs'] });
+
+          // Show toast for new trade detected
+          if (message.data) {
+            const trade = message.data as { instrument?: string; side?: string; units?: number };
+            if (trade.instrument) {
+              toast.info('New trade detected', {
+                description: `${trade.side?.toUpperCase() || ''} ${trade.units || ''} ${trade.instrument}`,
+              });
+            }
+          }
+          break;
+
         case 'trade:mirror:complete':
           // Invalidate all trades queries
           queryClient.invalidateQueries({ queryKey: ['trades'] });
-          // Also invalidate logs as new entries may have been created
           queryClient.invalidateQueries({ queryKey: ['logs'] });
+
+          // Show toast for mirror completion
+          if (message.data) {
+            const result = message.data as { success?: boolean; executedUnits?: number; errorMessage?: string };
+            if (result.success) {
+              toast.success('Trade mirrored successfully', {
+                description: result.executedUnits ? `${result.executedUnits} units` : undefined,
+              });
+            } else {
+              toast.error('Mirror trade failed', {
+                description: result.errorMessage || 'Unknown error',
+              });
+            }
+          }
           break;
 
         case 'stream:status':

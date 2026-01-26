@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   api,
   CreateSourceAccountRequest,
@@ -27,8 +28,16 @@ export function useCreateSourceAccount() {
 
   return useMutation({
     mutationFn: (data: CreateSourceAccountRequest) => api.createSourceAccount(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['sourceAccounts'] });
+      toast.success('Source account added', {
+        description: data.alias || data.oandaAccountId,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to add source account', {
+        description: error.message,
+      });
     },
   });
 }
@@ -40,6 +49,12 @@ export function useDeleteSourceAccount() {
     mutationFn: (id: string) => api.deleteSourceAccount(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sourceAccounts'] });
+      toast.success('Source account deleted');
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to delete source account', {
+        description: error.message,
+      });
     },
   });
 }
@@ -52,6 +67,12 @@ export function useUpdateSourceAccount() {
       api.updateSourceAccount(id, { alias }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sourceAccounts'] });
+      toast.success('Source account updated');
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to update source account', {
+        description: error.message,
+      });
     },
   });
 }
@@ -61,8 +82,16 @@ export function useCreateMirrorAccount(sourceId: string) {
 
   return useMutation({
     mutationFn: (data: CreateMirrorAccountRequest) => api.createMirrorAccount(sourceId, data),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mirrorAccounts', sourceId] });
+      toast.success('Mirror account added', {
+        description: data.alias || data.oandaAccountId,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to add mirror account', {
+        description: error.message,
+      });
     },
   });
 }
@@ -74,6 +103,12 @@ export function useDeleteMirrorAccount(sourceId: string) {
     mutationFn: (id: string) => api.deleteMirrorAccount(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mirrorAccounts', sourceId] });
+      toast.success('Mirror account deleted');
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to delete mirror account', {
+        description: error.message,
+      });
     },
   });
 }
@@ -86,6 +121,12 @@ export function useUpdateMirrorAccount(sourceId: string) {
       api.updateMirrorAccount(id, { scalingMode, scaleFactor, alias }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mirrorAccounts', sourceId] });
+      toast.success('Mirror account updated');
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to update mirror account', {
+        description: error.message,
+      });
     },
   });
 }

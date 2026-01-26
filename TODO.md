@@ -1,7 +1,7 @@
 # OANDA Trade Mirror - Future Improvements
 
 ## User Feedback
-- [ ] Toast notifications for actions (account created, trade placed, errors)
+- [x] Toast notifications for actions (account created, trade placed, errors)
 - [ ] Loading skeletons instead of "Loading..." text
 
 ## Dashboard Enhancements

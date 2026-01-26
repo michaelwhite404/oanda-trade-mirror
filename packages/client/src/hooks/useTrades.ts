@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api, PlaceTradeRequest, GetLogsParams } from '@/api/client';
 
 export function useTrades(sourceId: string | null, limit = 50) {
@@ -25,8 +26,16 @@ export function usePlaceTrade(sourceId: string) {
 
   return useMutation({
     mutationFn: (data: PlaceTradeRequest) => api.placeTrade(sourceId, data),
-    onSuccess: () => {
+    onSuccess: (_response, variables) => {
       queryClient.invalidateQueries({ queryKey: ['trades', sourceId] });
+      toast.success('Trade placed successfully', {
+        description: `${variables.side.toUpperCase()} ${variables.units} ${variables.instrument}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to place trade', {
+        description: error.message,
+      });
     },
   });
 }
