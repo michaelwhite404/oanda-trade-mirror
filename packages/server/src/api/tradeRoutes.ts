@@ -47,6 +47,116 @@ router.get('/:sourceId', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/trades/:sourceId/export - Export trade history as CSV
+router.get('/:sourceId/export', async (req: Request, res: Response) => {
+  try {
+    const { sourceId } = req.params;
+    if (!Types.ObjectId.isValid(sourceId)) {
+      res.status(400).json({ error: 'Invalid source account ID' });
+      return;
+    }
+
+    const { dateFrom, dateTo } = req.query;
+
+    const query: Record<string, unknown> = { sourceAccountId: new Types.ObjectId(sourceId) };
+
+    if (dateFrom || dateTo) {
+      query.createdAt = {};
+      if (dateFrom) {
+        (query.createdAt as Record<string, Date>).$gte = new Date(dateFrom as string);
+      }
+      if (dateTo) {
+        (query.createdAt as Record<string, Date>).$lte = new Date(dateTo as string);
+      }
+    }
+
+    const trades = await tradeHistoryService.searchTrades(
+      new Types.ObjectId(sourceId),
+      {
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        limit: 10000, // Large limit for export
+      }
+    );
+
+    // Build CSV
+    const headers = [
+      'Date',
+      'Time',
+      'Instrument',
+      'Side',
+      'Units',
+      'Price',
+      'Source Transaction ID',
+      'Mirror Account',
+      'Mirror Status',
+      'Mirror Units',
+      'Mirror Transaction ID',
+      'Mirror Error',
+    ];
+
+    const rows = trades.flatMap((trade) => {
+      const createdAt = trade.createdAt as Date | string | undefined;
+      const date = createdAt ? new Date(createdAt) : new Date();
+      const dateStr = date.toISOString().split('T')[0];
+      const timeStr = date.toISOString().split('T')[1].split('.')[0];
+
+      if (trade.mirrorExecutions.length === 0) {
+        return [[
+          dateStr,
+          timeStr,
+          trade.instrument,
+          trade.side.toUpperCase(),
+          trade.units,
+          trade.price,
+          trade.sourceTransactionId,
+          '',
+          'No mirrors',
+          '',
+          '',
+          '',
+        ]];
+      }
+
+      return trade.mirrorExecutions.map((exec) => [
+        dateStr,
+        timeStr,
+        trade.instrument,
+        trade.side.toUpperCase(),
+        trade.units,
+        trade.price,
+        trade.sourceTransactionId,
+        exec.oandaAccountId,
+        exec.status,
+        exec.executedUnits || '',
+        exec.oandaTransactionId || '',
+        exec.errorMessage || '',
+      ]);
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) =>
+        row.map((cell) => {
+          const str = String(cell);
+          // Escape quotes and wrap in quotes if contains comma
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        }).join(',')
+      ),
+    ].join('\n');
+
+    const exportDate = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="trade-history-${exportDate}.csv"`);
+    res.send(csvContent);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 // GET /api/trades/:sourceId/:txnId - Get a single trade by transaction ID
 router.get('/:sourceId/:txnId', async (req: Request, res: Response) => {
   try {

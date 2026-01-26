@@ -12,7 +12,7 @@
 
 ## Trade Management
 - [ ] Retry button for failed mirror executions
-- [ ] Export trade history to CSV
+- [x] Export trade history to CSV
 - [x] Trade filtering/search (by instrument, date range, side)
 - [ ] Show pending trades that are being mirrored
 

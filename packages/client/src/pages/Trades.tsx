@@ -16,7 +16,7 @@ import { TradeTable } from '@/components/trades/TradeTable';
 import { TradeFilters } from '@/components/trades/TradeFilters';
 import { PlaceTradeDialog, TradeFormData } from '@/components/trades/PlaceTradeDialog';
 import { GetTradesParams } from '@/api/client';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, Download } from 'lucide-react';
 
 export default function Trades() {
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
@@ -45,6 +45,14 @@ export default function Trades() {
     setShowPlaceTrade(false);
   };
 
+  const handleExport = () => {
+    if (!selectedSource) return;
+    const params = new URLSearchParams();
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.set('dateTo', filters.dateTo);
+    window.open(`/api/trades/${selectedSource}/export?${params}`, '_blank');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -60,6 +68,15 @@ export default function Trades() {
             disabled={tradesLoading}
           >
             <RefreshCw className={`h-4 w-4 ${tradesLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={!selectedSource || trades.length === 0}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
           </Button>
           <Button onClick={() => setShowPlaceTrade(true)} disabled={!selectedSource}>
             <Plus className="mr-2 h-4 w-4" />
