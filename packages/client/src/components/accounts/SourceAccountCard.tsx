@@ -10,11 +10,12 @@ import {
   useUpdateMirrorAccount,
   useCreateMirrorAccount,
   useUpdateSourceAccount,
+  useToggleMirrorAccount,
 } from '@/hooks/useAccounts';
 import { SourceAccount, MirrorAccount, ScalingMode } from '@/api/client';
 import { AddAccountDialog, AccountFormData } from './AddAccountDialog';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
-import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Pause, Play } from 'lucide-react';
 
 interface SourceAccountCardProps {
   source: SourceAccount;
@@ -37,6 +38,7 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
   const updateMirrorMutation = useUpdateMirrorAccount(source._id);
   const createMirrorMutation = useCreateMirrorAccount(source._id);
   const updateSourceMutation = useUpdateSourceAccount();
+  const toggleMirrorMutation = useToggleMirrorAccount(source._id);
 
   const handleAddMirror = async (data: AccountFormData) => {
     await createMirrorMutation.mutateAsync({
@@ -182,7 +184,9 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
                   {mirrors.map((mirror) => (
                     <div
                       key={mirror._id}
-                      className="flex items-center justify-between rounded-lg border p-3"
+                      className={`flex items-center justify-between rounded-lg border p-3 ${
+                        !mirror.isActive ? 'border-dashed border-yellow-500/50 bg-yellow-50/50 dark:bg-yellow-950/20' : ''
+                      }`}
                     >
                       <div>
                         {editingMirrorAlias === mirror._id ? (
@@ -212,7 +216,9 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
                           </div>
                         ) : (
                           <p
-                            className="flex cursor-pointer items-center gap-1 font-medium hover:text-muted-foreground"
+                            className={`flex cursor-pointer items-center gap-1 font-medium hover:text-muted-foreground ${
+                              !mirror.isActive ? 'text-muted-foreground' : ''
+                            }`}
                             onClick={() => {
                               setEditingMirrorAlias(mirror._id);
                               setNewMirrorAlias(mirror.alias || '');
@@ -229,6 +235,11 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
                           <Badge variant="outline" className="text-xs">
                             {mirror.environment}
                           </Badge>
+                          {!mirror.isActive && (
+                            <Badge variant="warning" className="animate-pulse text-xs">
+                              Paused
+                            </Badge>
+                          )}
                           <Badge
                             variant={mirror.scalingMode === 'dynamic' ? 'default' : 'secondary'}
                             className="cursor-pointer text-xs"
@@ -283,13 +294,28 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
                           )}
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setMirrorToDelete(mirror)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => toggleMirrorMutation.mutate(mirror._id)}
+                          disabled={toggleMirrorMutation.isPending}
+                          title={mirror.isActive ? 'Pause mirroring' : 'Resume mirroring'}
+                        >
+                          {mirror.isActive ? (
+                            <Pause className="h-4 w-4" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setMirrorToDelete(mirror)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

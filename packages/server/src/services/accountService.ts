@@ -132,6 +132,27 @@ class AccountService {
     return MirrorAccount.find({ sourceAccountId, isActive: true });
   }
 
+  async getAllMirrorAccountsForSource(sourceAccountId: Types.ObjectId): Promise<MirrorAccountDocument[]> {
+    return MirrorAccount.find({ sourceAccountId });
+  }
+
+  async toggleMirrorAccountActive(mirrorAccountId: Types.ObjectId): Promise<boolean> {
+    const mirror = await MirrorAccount.findById(mirrorAccountId);
+    if (!mirror) {
+      throw new Error('Mirror account not found');
+    }
+
+    const newStatus = !mirror.isActive;
+    await MirrorAccount.findByIdAndUpdate(mirrorAccountId, { isActive: newStatus });
+
+    await auditService.info('account', newStatus ? 'Mirror account resumed' : 'Mirror account paused', {
+      mirrorAccountId,
+      details: { isActive: newStatus },
+    });
+
+    return newStatus;
+  }
+
   async getSourceAccountById(id: Types.ObjectId): Promise<SourceAccountDocument | null> {
     return SourceAccount.findById(id);
   }

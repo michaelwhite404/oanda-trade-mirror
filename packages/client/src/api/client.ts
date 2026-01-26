@@ -67,6 +67,13 @@ export const api = {
     return handleResponse<{ success: boolean }>(response);
   },
 
+  async toggleMirrorAccount(id: string) {
+    const response = await fetch(`${BASE_URL}/accounts/mirrors/${id}/toggle`, {
+      method: 'POST',
+    });
+    return handleResponse<{ success: boolean; isActive: boolean }>(response);
+  },
+
   async updateMirrorAccount(id: string, data: { scalingMode?: ScalingMode; scaleFactor?: number; alias?: string }) {
     const response = await fetch(`${BASE_URL}/accounts/mirrors/${id}`, {
       method: 'PATCH',

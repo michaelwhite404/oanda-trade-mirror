@@ -84,7 +84,8 @@ router.get('/sources/:id/mirrors', async (req: Request, res: Response) => {
       return;
     }
 
-    const mirrors = await accountService.getMirrorAccountsForSource(
+    // Return all mirrors including paused ones for UI display
+    const mirrors = await accountService.getAllMirrorAccountsForSource(
       new Types.ObjectId(id)
     );
 
@@ -186,6 +187,22 @@ router.patch('/sources/:id', async (req: Request, res: Response) => {
     res.json({ success: true });
   } catch (error) {
     res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+// POST /api/accounts/mirrors/:id/toggle - Pause/resume a mirror account
+router.post('/mirrors/:id/toggle', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!Types.ObjectId.isValid(id)) {
+      res.status(400).json({ error: 'Invalid mirror account ID' });
+      return;
+    }
+
+    const isActive = await accountService.toggleMirrorAccountActive(new Types.ObjectId(id));
+    res.json({ success: true, isActive });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
   }
 });
 

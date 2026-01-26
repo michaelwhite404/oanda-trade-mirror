@@ -131,6 +131,25 @@ export function useUpdateMirrorAccount(sourceId: string) {
   });
 }
 
+export function useToggleMirrorAccount(sourceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.toggleMirrorAccount(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['mirrorAccounts', sourceId] });
+      toast.success(data.isActive ? 'Mirror account resumed' : 'Mirror account paused', {
+        description: data.isActive ? 'Trades will now be mirrored' : 'Trades will not be mirrored',
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to toggle mirror account', {
+        description: error.message,
+      });
+    },
+  });
+}
+
 export function useValidateCredentials() {
   return useMutation({
     mutationFn: (data: ValidateCredentialsRequest) => api.validateCredentials(data),
