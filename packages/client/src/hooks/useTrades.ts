@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api, PlaceTradeRequest, GetLogsParams } from '@/api/client';
+import { api, PlaceTradeRequest, GetLogsParams, GetTradesParams } from '@/api/client';
 
-export function useTrades(sourceId: string | null, limit = 50) {
+export function useTrades(sourceId: string | null, params: GetTradesParams = {}) {
   return useQuery({
-    queryKey: ['trades', sourceId, limit],
-    queryFn: () => (sourceId ? api.getTrades(sourceId, limit) : Promise.resolve([])),
+    queryKey: ['trades', sourceId, params],
+    queryFn: () => (sourceId ? api.getTrades(sourceId, params) : Promise.resolve([])),
     enabled: !!sourceId,
     // Reduced polling - real-time updates come via WebSocket
     refetchInterval: 60000,

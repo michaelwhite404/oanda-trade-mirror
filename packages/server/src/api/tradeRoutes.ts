@@ -17,13 +17,31 @@ router.get('/:sourceId', async (req: Request, res: Response) => {
       return;
     }
 
-    const limit = parseInt(req.query.limit as string) || 50;
-    const trades = await tradeHistoryService.getRecentTrades(
-      new Types.ObjectId(sourceId),
-      limit
-    );
+    const { instrument, side, status, dateFrom, dateTo, limit } = req.query;
 
-    res.json(trades);
+    // Check if any filters are applied
+    const hasFilters = instrument || side || status || dateFrom || dateTo;
+
+    if (hasFilters) {
+      const trades = await tradeHistoryService.searchTrades(
+        new Types.ObjectId(sourceId),
+        {
+          instrument: instrument as string | undefined,
+          side: side as 'buy' | 'sell' | undefined,
+          status: status as 'pending' | 'success' | 'failed' | undefined,
+          dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+          dateTo: dateTo ? new Date(dateTo as string) : undefined,
+          limit: parseInt(limit as string) || 100,
+        }
+      );
+      res.json(trades);
+    } else {
+      const trades = await tradeHistoryService.getRecentTrades(
+        new Types.ObjectId(sourceId),
+        parseInt(limit as string) || 50
+      );
+      res.json(trades);
+    }
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

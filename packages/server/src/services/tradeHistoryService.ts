@@ -122,6 +122,48 @@ class TradeHistoryService {
       .limit(limit);
   }
 
+  async searchTrades(
+    sourceAccountId: Types.ObjectId,
+    filters: {
+      instrument?: string;
+      side?: 'buy' | 'sell';
+      status?: 'pending' | 'success' | 'failed';
+      dateFrom?: Date;
+      dateTo?: Date;
+      limit?: number;
+    }
+  ): Promise<TradeHistoryDocument[]> {
+    const query: Record<string, unknown> = { sourceAccountId };
+
+    if (filters.instrument) {
+      // Case-insensitive partial match
+      query.instrument = { $regex: filters.instrument, $options: 'i' };
+    }
+
+    if (filters.side) {
+      query.side = filters.side;
+    }
+
+    if (filters.dateFrom || filters.dateTo) {
+      query.createdAt = {};
+      if (filters.dateFrom) {
+        (query.createdAt as Record<string, Date>).$gte = filters.dateFrom;
+      }
+      if (filters.dateTo) {
+        (query.createdAt as Record<string, Date>).$lte = filters.dateTo;
+      }
+    }
+
+    // Filter by mirror execution status
+    if (filters.status) {
+      query['mirrorExecutions.status'] = filters.status;
+    }
+
+    return TradeHistory.find(query)
+      .sort({ createdAt: -1 })
+      .limit(filters.limit || 100);
+  }
+
   async wasTransactionProcessed(
     sourceAccountId: Types.ObjectId,
     sourceTransactionId: string

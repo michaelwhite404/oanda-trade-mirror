@@ -86,8 +86,16 @@ export const api = {
   },
 
   // Trades
-  async getTrades(sourceId: string, limit = 50) {
-    const response = await fetch(`${BASE_URL}/trades/${sourceId}?limit=${limit}`);
+  async getTrades(sourceId: string, params: GetTradesParams = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit) searchParams.set('limit', String(params.limit));
+    if (params.instrument) searchParams.set('instrument', params.instrument);
+    if (params.side) searchParams.set('side', params.side);
+    if (params.status) searchParams.set('status', params.status);
+    if (params.dateFrom) searchParams.set('dateFrom', params.dateFrom);
+    if (params.dateTo) searchParams.set('dateTo', params.dateTo);
+
+    const response = await fetch(`${BASE_URL}/trades/${sourceId}?${searchParams}`);
     return handleResponse<Trade[]>(response);
   },
 
@@ -234,6 +242,15 @@ export interface PlaceTradeResponse {
     price: string;
   };
   relatedTransactionIDs?: string[];
+}
+
+export interface GetTradesParams {
+  limit?: number;
+  instrument?: string;
+  side?: 'buy' | 'sell';
+  status?: 'pending' | 'success' | 'failed';
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface GetLogsParams {

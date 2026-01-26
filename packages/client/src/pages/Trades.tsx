@@ -13,17 +13,20 @@ import { useTrades, usePlaceTrade } from '@/hooks/useTrades';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { TradeTable } from '@/components/trades/TradeTable';
+import { TradeFilters } from '@/components/trades/TradeFilters';
 import { PlaceTradeDialog, TradeFormData } from '@/components/trades/PlaceTradeDialog';
+import { GetTradesParams } from '@/api/client';
 import { Plus, RefreshCw } from 'lucide-react';
 
 export default function Trades() {
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [showPlaceTrade, setShowPlaceTrade] = useState(false);
+  const [filters, setFilters] = useState<GetTradesParams>({ limit: 100 });
 
   const { data: sources = [], isLoading: sourcesLoading } = useSourceAccounts();
   const { data: trades = [], isLoading: tradesLoading, refetch } = useTrades(
     selectedSource,
-    100
+    filters
   );
 
   // Enable real-time updates for selected source
@@ -90,13 +93,16 @@ export default function Trades() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {!selectedSource ? (
             <p className="text-muted-foreground">
               Select a source account to view trades
             </p>
           ) : (
-            <TradeTable trades={trades} isLoading={tradesLoading} />
+            <>
+              <TradeFilters filters={filters} onFiltersChange={setFilters} />
+              <TradeTable trades={trades} isLoading={tradesLoading} />
+            </>
           )}
         </CardContent>
       </Card>
