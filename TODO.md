@@ -17,6 +17,7 @@
 - [ ] Show pending trades that are being mirrored
 
 ## Account Management
+- [x] Dynamic NAV-based scaling (auto-scale based on account balance ratio)
 - [ ] Pause/resume mirroring without deleting accounts
 - [ ] Quick scale factor adjustment buttons (0.5x, 1x, 2x)
 - [ ] Bulk actions (pause all mirrors, resume all)

@@ -67,7 +67,7 @@ export const api = {
     return handleResponse<{ success: boolean }>(response);
   },
 
-  async updateMirrorAccount(id: string, data: { scaleFactor?: number; alias?: string }) {
+  async updateMirrorAccount(id: string, data: { scalingMode?: ScalingMode; scaleFactor?: number; alias?: string }) {
     const response = await fetch(`${BASE_URL}/accounts/mirrors/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -144,12 +144,15 @@ export interface SourceAccount {
   updatedAt: string;
 }
 
+export type ScalingMode = 'dynamic' | 'static';
+
 export interface MirrorAccount {
   _id: string;
   sourceAccountId: string;
   oandaAccountId: string;
   environment: 'practice' | 'live';
   alias: string | null;
+  scalingMode: ScalingMode;
   scaleFactor: number;
   isActive: boolean;
   createdAt: string;
@@ -203,6 +206,7 @@ export interface CreateMirrorAccountRequest {
   oandaAccountId: string;
   apiToken: string;
   environment: 'practice' | 'live';
+  scalingMode?: ScalingMode;
   scaleFactor?: number;
   alias?: string;
 }

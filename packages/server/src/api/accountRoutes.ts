@@ -94,6 +94,7 @@ router.get('/sources/:id/mirrors', async (req: Request, res: Response) => {
       oandaAccountId: m.oandaAccountId,
       environment: m.environment,
       alias: m.alias,
+      scalingMode: m.scalingMode,
       scaleFactor: m.scaleFactor,
       isActive: m.isActive,
       createdAt: m.createdAt,
@@ -115,7 +116,7 @@ router.post('/sources/:id/mirrors', async (req: Request, res: Response) => {
       return;
     }
 
-    const { oandaAccountId, apiToken, environment, scaleFactor, alias } = req.body;
+    const { oandaAccountId, apiToken, environment, scalingMode, scaleFactor, alias } = req.body;
 
     if (!oandaAccountId || !apiToken) {
       res.status(400).json({ error: 'oandaAccountId and apiToken are required' });
@@ -127,6 +128,7 @@ router.post('/sources/:id/mirrors', async (req: Request, res: Response) => {
       oandaAccountId,
       apiToken,
       environment: (environment as OandaEnvironment) || 'practice',
+      scalingMode: scalingMode || 'dynamic',
       scaleFactor: scaleFactor || 1.0,
       alias: alias || undefined,
     });
@@ -137,6 +139,7 @@ router.post('/sources/:id/mirrors', async (req: Request, res: Response) => {
       oandaAccountId: mirror.oandaAccountId,
       environment: mirror.environment,
       alias: mirror.alias,
+      scalingMode: mirror.scalingMode,
       scaleFactor: mirror.scaleFactor,
       isActive: mirror.isActive,
       createdAt: mirror.createdAt,
@@ -185,7 +188,7 @@ router.patch('/sources/:id', async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/accounts/mirrors/:id - Update a mirror account (scale factor, alias)
+// PATCH /api/accounts/mirrors/:id - Update a mirror account (scaling mode, scale factor, alias)
 router.patch('/mirrors/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -194,8 +197,12 @@ router.patch('/mirrors/:id', async (req: Request, res: Response) => {
       return;
     }
 
-    const { scaleFactor, alias } = req.body;
+    const { scalingMode, scaleFactor, alias } = req.body;
     const mirrorId = new Types.ObjectId(id);
+
+    if (scalingMode !== undefined) {
+      await accountService.updateScalingMode(mirrorId, scalingMode);
+    }
 
     if (scaleFactor !== undefined) {
       await accountService.updateScaleFactor(mirrorId, scaleFactor);

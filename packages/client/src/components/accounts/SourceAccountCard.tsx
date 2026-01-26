@@ -11,7 +11,7 @@ import {
   useCreateMirrorAccount,
   useUpdateSourceAccount,
 } from '@/hooks/useAccounts';
-import { SourceAccount, MirrorAccount } from '@/api/client';
+import { SourceAccount, MirrorAccount, ScalingMode } from '@/api/client';
 import { AddAccountDialog, AccountFormData } from './AddAccountDialog';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
@@ -43,10 +43,16 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
       oandaAccountId: data.oandaAccountId,
       apiToken: data.apiToken,
       environment: data.environment,
+      scalingMode: data.scalingMode,
       scaleFactor: data.scaleFactor,
       alias: data.alias || undefined,
     });
     setShowAddMirror(false);
+  };
+
+  const handleToggleScalingMode = async (mirrorId: string, currentMode: ScalingMode) => {
+    const newMode: ScalingMode = currentMode === 'dynamic' ? 'static' : 'dynamic';
+    await updateMirrorMutation.mutateAsync({ id: mirrorId, scalingMode: newMode });
   };
 
   const handleUpdateScaleFactor = async (mirrorId: string) => {
@@ -219,49 +225,61 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
                         {!editingMirrorAlias && mirror.alias && (
                           <p className="text-xs text-muted-foreground">{mirror.oandaAccountId}</p>
                         )}
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                           <Badge variant="outline" className="text-xs">
                             {mirror.environment}
                           </Badge>
-                          {editingScaleFactor === mirror._id ? (
-                            <div className="flex items-center gap-1">
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0.01"
-                                max="100"
-                                value={newScaleFactor}
-                                onChange={(e) => setNewScaleFactor(e.target.value)}
-                                className="h-6 w-20 text-xs"
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => handleUpdateScaleFactor(mirror._id)}
-                              >
-                                <Check className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => setEditingScaleFactor(null)}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <span
-                              className="flex cursor-pointer items-center gap-1 hover:text-foreground"
-                              onClick={() => {
-                                setEditingScaleFactor(mirror._id);
-                                setNewScaleFactor(String(mirror.scaleFactor));
-                              }}
-                            >
-                              Scale: {mirror.scaleFactor}x
-                              <Edit2 className="h-3 w-3" />
-                            </span>
+                          <Badge
+                            variant={mirror.scalingMode === 'dynamic' ? 'default' : 'secondary'}
+                            className="cursor-pointer text-xs"
+                            onClick={() => handleToggleScalingMode(mirror._id, mirror.scalingMode)}
+                            title="Click to toggle scaling mode"
+                          >
+                            {mirror.scalingMode === 'dynamic' ? 'NAV-based' : 'Static'}
+                          </Badge>
+                          {mirror.scalingMode === 'static' && (
+                            <>
+                              {editingScaleFactor === mirror._id ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    max="100"
+                                    value={newScaleFactor}
+                                    onChange={(e) => setNewScaleFactor(e.target.value)}
+                                    className="h-6 w-20 text-xs"
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => handleUpdateScaleFactor(mirror._id)}
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => setEditingScaleFactor(null)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span
+                                  className="flex cursor-pointer items-center gap-1 hover:text-foreground"
+                                  onClick={() => {
+                                    setEditingScaleFactor(mirror._id);
+                                    setNewScaleFactor(String(mirror.scaleFactor));
+                                  }}
+                                >
+                                  {mirror.scaleFactor}x
+                                  <Edit2 className="h-3 w-3" />
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>

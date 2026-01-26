@@ -115,6 +115,16 @@ export class MirrorOrchestrator {
         return;
       }
 
+      // Get source account for dynamic scaling
+      const sourceAccount = await SourceAccount.findById(sourceAccountId);
+      if (!sourceAccount || !sourceAccount.isActive) {
+        await auditService.warn('trade', 'Source account not found or inactive', {
+          sourceAccountId,
+          transactionId: trade.transactionId,
+        });
+        return;
+      }
+
       // Get mirror accounts for this source
       const mirrorAccounts = await accountService.getMirrorAccountsForSource(sourceAccountId);
 
@@ -127,7 +137,7 @@ export class MirrorOrchestrator {
       }
 
       // Process the trade
-      await this.processTrade(sourceAccountId, trade, mirrorAccounts);
+      await this.processTrade(sourceAccountId, trade, mirrorAccounts, sourceAccount);
     } catch (error) {
       await auditService.error('trade', 'Error handling streamed trade', {
         sourceAccountId,
@@ -189,7 +199,7 @@ export class MirrorOrchestrator {
       for (const trade of newTrades) {
         // Emit event for WebSocket (in polling mode)
         eventBus.emitTradeNew(sourceAccountId, trade);
-        await this.processTrade(sourceAccountId, trade, mirrorAccounts);
+        await this.processTrade(sourceAccountId, trade, mirrorAccounts, freshSource);
       }
     } catch (error) {
       await auditService.error('trade', 'Error processing source account', {
@@ -202,7 +212,8 @@ export class MirrorOrchestrator {
   private async processTrade(
     sourceAccountId: Types.ObjectId,
     trade: DetectedTrade,
-    mirrorAccounts: Awaited<ReturnType<typeof accountService.getMirrorAccountsForSource>>
+    mirrorAccounts: Awaited<ReturnType<typeof accountService.getMirrorAccountsForSource>>,
+    sourceAccount: SourceAccountDocument
   ): Promise<void> {
     try {
       // Check if this trade was already processed (idempotency)
@@ -238,8 +249,8 @@ export class MirrorOrchestrator {
         );
       }
 
-      // Execute mirrors
-      const results = await mirrorTrade(tradeHistory, mirrorAccounts);
+      // Execute mirrors with dynamic scaling
+      const results = await mirrorTrade(tradeHistory, mirrorAccounts, sourceAccount);
 
       // Emit mirror complete events
       for (let i = 0; i < results.length; i++) {

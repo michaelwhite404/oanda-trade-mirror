@@ -32,13 +32,16 @@ export interface ISourceAccount {
   updatedAt?: Date;
 }
 
+export type ScalingMode = 'dynamic' | 'static';
+
 export interface IMirrorAccount {
   sourceAccountId: Types.ObjectId;
   oandaAccountId: string;
   apiToken: string;
   environment: OandaEnvironment;
   alias: string | null;
-  scaleFactor: number;
+  scalingMode: ScalingMode;
+  scaleFactor: number; // Used when scalingMode is 'static', ignored when 'dynamic'
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;

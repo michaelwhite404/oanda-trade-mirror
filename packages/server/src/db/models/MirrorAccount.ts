@@ -30,6 +30,11 @@ const MirrorAccountSchema = new Schema<MirrorAccountDocument>(
       type: String,
       default: null,
     },
+    scalingMode: {
+      type: String,
+      enum: ['dynamic', 'static'],
+      default: 'dynamic',
+    },
     scaleFactor: {
       type: Number,
       default: 1.0,

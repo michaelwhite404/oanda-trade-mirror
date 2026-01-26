@@ -16,6 +16,7 @@ interface CreateMirrorAccountParams {
   oandaAccountId: string;
   apiToken: string;
   environment: OandaEnvironment;
+  scalingMode?: 'dynamic' | 'static';
   scaleFactor?: number;
   alias?: string;
 }
@@ -104,6 +105,7 @@ class AccountService {
       apiToken: params.apiToken,
       environment: params.environment,
       alias: params.alias || null,
+      scalingMode: params.scalingMode ?? 'dynamic',
       scaleFactor: params.scaleFactor ?? 1.0,
       isActive: true,
     });
@@ -114,6 +116,7 @@ class AccountService {
       details: {
         oandaAccountId: params.oandaAccountId,
         environment: params.environment,
+        scalingMode: params.scalingMode ?? 'dynamic',
         scaleFactor: params.scaleFactor ?? 1.0,
       },
     });
@@ -170,6 +173,19 @@ class AccountService {
     await auditService.info('account', 'Mirror account scale factor updated', {
       mirrorAccountId,
       details: { scaleFactor },
+    });
+  }
+
+  async updateScalingMode(mirrorAccountId: Types.ObjectId, scalingMode: 'dynamic' | 'static'): Promise<void> {
+    if (scalingMode !== 'dynamic' && scalingMode !== 'static') {
+      throw new Error('Scaling mode must be "dynamic" or "static"');
+    }
+
+    await MirrorAccount.findByIdAndUpdate(mirrorAccountId, { scalingMode });
+
+    await auditService.info('account', 'Mirror account scaling mode updated', {
+      mirrorAccountId,
+      details: { scalingMode },
     });
   }
 
