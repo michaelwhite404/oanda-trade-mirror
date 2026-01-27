@@ -28,6 +28,6 @@
 - [ ] Desktop notifications when trades are mirrored (or fail)
 
 ## Quality of Life
-- [ ] Dark mode toggle
+- [x] Dark mode toggle
 - [ ] Keyboard shortcuts
 - [ ] Remember last selected source account

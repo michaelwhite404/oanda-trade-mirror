@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, TrendingUp, FileText, Menu, X, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, FileText, Menu, X, Wifi, WifiOff, AlertTriangle, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useStreamStatus } from '@/hooks/useTrades';
+import { useTheme } from '@/hooks/useTheme';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -73,6 +74,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ open, onOpenChange }: SidebarProps) {
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <>
       {/* Mobile header */}
@@ -87,7 +90,12 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
           </Button>
           <h1 className="ml-3 text-lg font-bold">OANDA Mirror</h1>
         </div>
-        <StreamStatusIndicator />
+        <div className="flex items-center gap-2">
+          <StreamStatusIndicator />
+          <Button variant="ghost" size="icon" onClick={toggleTheme}>
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile overlay */}
@@ -139,6 +147,25 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
             </NavLink>
           ))}
         </nav>
+        <div className="border-t p-4">
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3"
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun className="h-5 w-5" />
+                Light Mode
+              </>
+            ) : (
+              <>
+                <Moon className="h-5 w-5" />
+                Dark Mode
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </>
   );
