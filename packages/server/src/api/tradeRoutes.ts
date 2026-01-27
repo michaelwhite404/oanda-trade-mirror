@@ -47,6 +47,25 @@ router.get('/:sourceId', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/trades/:sourceId/sync-status - Get sync status for mirrors
+router.get('/:sourceId/sync-status', async (req: Request, res: Response) => {
+  try {
+    const { sourceId } = req.params;
+    if (!Types.ObjectId.isValid(sourceId)) {
+      res.status(400).json({ error: 'Invalid source account ID' });
+      return;
+    }
+
+    const syncStatus = await tradeHistoryService.getSyncStatus(
+      new Types.ObjectId(sourceId)
+    );
+
+    res.json(syncStatus);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 // GET /api/trades/:sourceId/export - Export trade history as CSV
 router.get('/:sourceId/export', async (req: Request, res: Response) => {
   try {

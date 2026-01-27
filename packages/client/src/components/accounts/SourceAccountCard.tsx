@@ -12,10 +12,11 @@ import {
   useUpdateSourceAccount,
   useToggleMirrorAccount,
 } from '@/hooks/useAccounts';
+import { useSyncStatus } from '@/hooks/useTrades';
 import { SourceAccount, MirrorAccount, ScalingMode } from '@/api/client';
 import { AddAccountDialog, AccountFormData } from './AddAccountDialog';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
-import { Plus, Trash2, Edit2, Check, X, Pause, Play } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Pause, Play, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 
 interface SourceAccountCardProps {
   source: SourceAccount;
@@ -33,6 +34,7 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
   const [mirrorToDelete, setMirrorToDelete] = useState<MirrorAccount | null>(null);
 
   const { data: mirrors = [], isLoading } = useMirrorAccounts(source._id);
+  const { data: syncStatus } = useSyncStatus(source._id);
   const deleteSourceMutation = useDeleteSourceAccount();
   const deleteMirrorMutation = useDeleteMirrorAccount(source._id);
   const updateMirrorMutation = useUpdateMirrorAccount(source._id);
@@ -88,6 +90,11 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
       await deleteMirrorMutation.mutateAsync(mirrorToDelete._id);
       setMirrorToDelete(null);
     }
+  };
+
+  const getMirrorSyncStatus = (mirrorId: string) => {
+    if (!syncStatus) return null;
+    return syncStatus.mirrorStatus.find((s) => s.mirrorAccountId === mirrorId);
   };
 
   return (
@@ -240,6 +247,35 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
                               Paused
                             </Badge>
                           )}
+                          {mirror.isActive && (() => {
+                            const status = getMirrorSyncStatus(mirror._id);
+                            if (!status) return null;
+                            if (status.pendingCount > 0) {
+                              return (
+                                <Badge variant="outline" className="gap-1 border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400">
+                                  <Clock className="h-3 w-3" />
+                                  {status.pendingCount} pending
+                                </Badge>
+                              );
+                            }
+                            if (status.failedCount > 0) {
+                              return (
+                                <Badge variant="outline" className="gap-1 border-red-500 bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400">
+                                  <AlertCircle className="h-3 w-3" />
+                                  {status.failedCount} failed
+                                </Badge>
+                              );
+                            }
+                            if (status.successCount > 0) {
+                              return (
+                                <Badge variant="outline" className="gap-1 border-green-500 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  Synced
+                                </Badge>
+                              );
+                            }
+                            return null;
+                          })()}
                           <Badge
                             variant={mirror.scalingMode === 'dynamic' ? 'default' : 'secondary'}
                             className="cursor-pointer text-xs"

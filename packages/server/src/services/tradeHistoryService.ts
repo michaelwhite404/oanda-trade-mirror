@@ -174,6 +174,83 @@ class TradeHistoryService {
     });
     return count > 0;
   }
+
+  async getSyncStatus(sourceAccountId: Types.ObjectId): Promise<{
+    totalTrades: number;
+    pendingCount: number;
+    failedCount: number;
+    lastTradeAt: Date | null;
+    mirrorStatus: Array<{
+      mirrorAccountId: string;
+      oandaAccountId: string;
+      pendingCount: number;
+      failedCount: number;
+      successCount: number;
+      lastSuccessAt: Date | null;
+    }>;
+  }> {
+    // Get recent trades (last 100)
+    const trades = await TradeHistory.find({ sourceAccountId })
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    const totalTrades = trades.length;
+    const lastTradeAt = trades.length > 0 ? trades[0].createdAt as Date : null;
+
+    // Aggregate mirror execution stats
+    const mirrorStats = new Map<string, {
+      oandaAccountId: string;
+      pendingCount: number;
+      failedCount: number;
+      successCount: number;
+      lastSuccessAt: Date | null;
+    }>();
+
+    let pendingCount = 0;
+    let failedCount = 0;
+
+    for (const trade of trades) {
+      for (const exec of trade.mirrorExecutions) {
+        const mirrorId = exec.mirrorAccountId.toString();
+
+        if (!mirrorStats.has(mirrorId)) {
+          mirrorStats.set(mirrorId, {
+            oandaAccountId: exec.oandaAccountId,
+            pendingCount: 0,
+            failedCount: 0,
+            successCount: 0,
+            lastSuccessAt: null,
+          });
+        }
+
+        const stats = mirrorStats.get(mirrorId)!;
+
+        if (exec.status === 'pending') {
+          stats.pendingCount++;
+          pendingCount++;
+        } else if (exec.status === 'failed') {
+          stats.failedCount++;
+          failedCount++;
+        } else if (exec.status === 'success') {
+          stats.successCount++;
+          if (!stats.lastSuccessAt || exec.executedAt > stats.lastSuccessAt) {
+            stats.lastSuccessAt = exec.executedAt;
+          }
+        }
+      }
+    }
+
+    return {
+      totalTrades,
+      pendingCount,
+      failedCount,
+      lastTradeAt,
+      mirrorStatus: Array.from(mirrorStats.entries()).map(([mirrorAccountId, stats]) => ({
+        mirrorAccountId,
+        ...stats,
+      })),
+    };
+  }
 }
 
 export const tradeHistoryService = new TradeHistoryService();

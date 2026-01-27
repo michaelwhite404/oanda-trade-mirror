@@ -111,6 +111,11 @@ export const api = {
     return handleResponse<Trade>(response);
   },
 
+  async getSyncStatus(sourceId: string) {
+    const response = await fetch(`${BASE_URL}/trades/${sourceId}/sync-status`);
+    return handleResponse<SyncStatus>(response);
+  },
+
   async placeTrade(sourceId: string, data: PlaceTradeRequest) {
     const response = await fetch(`${BASE_URL}/trades/${sourceId}`, {
       method: 'POST',
@@ -362,4 +367,21 @@ export interface AccountStatsData {
 
 export interface StatsResponse {
   accounts: AccountStatsData[];
+}
+
+export interface MirrorSyncStatus {
+  mirrorAccountId: string;
+  oandaAccountId: string;
+  pendingCount: number;
+  failedCount: number;
+  successCount: number;
+  lastSuccessAt: string | null;
+}
+
+export interface SyncStatus {
+  totalTrades: number;
+  pendingCount: number;
+  failedCount: number;
+  lastTradeAt: string | null;
+  mirrorStatus: MirrorSyncStatus[];
 }

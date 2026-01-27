@@ -21,7 +21,7 @@
 - [x] Pause/resume mirroring without deleting accounts
 - [ ] Quick scale factor adjustment buttons (0.5x, 1x, 2x)
 - [ ] Bulk actions (pause all mirrors, resume all)
-- [ ] Show sync status - whether mirrors are caught up with source
+- [x] Show sync status - whether mirrors are caught up with source
 
 ## Real-time Updates
 - [x] WebSocket connection for live trade updates instead of manual refresh

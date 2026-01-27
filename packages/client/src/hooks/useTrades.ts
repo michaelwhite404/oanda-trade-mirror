@@ -79,3 +79,12 @@ export function useStats() {
     refetchInterval: 60000, // Refresh every minute
   });
 }
+
+export function useSyncStatus(sourceId: string | null) {
+  return useQuery({
+    queryKey: ['syncStatus', sourceId],
+    queryFn: () => (sourceId ? api.getSyncStatus(sourceId) : Promise.resolve(null)),
+    enabled: !!sourceId,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+}
