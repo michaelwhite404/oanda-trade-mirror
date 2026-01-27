@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, TrendingUp, FileText, Menu, X, Wifi, WifiOff, AlertTriangle, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, FileText, Menu, X, Wifi, WifiOff, AlertTriangle, Moon, Sun, Bell, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useStreamStatus } from '@/hooks/useTrades';
 import { useTheme } from '@/hooks/useTheme';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -75,6 +76,7 @@ interface SidebarProps {
 
 export function Sidebar({ open, onOpenChange }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
+  const { enabled: notificationsEnabled, toggleNotifications, isSupported: notificationsSupported, permission } = useNotifications();
 
   return (
     <>
@@ -147,7 +149,28 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
             </NavLink>
           ))}
         </nav>
-        <div className="border-t p-4">
+        <div className="space-y-1 border-t p-4">
+          {notificationsSupported && (
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3"
+              onClick={toggleNotifications}
+              disabled={permission === 'denied'}
+              title={permission === 'denied' ? 'Notifications blocked by browser' : undefined}
+            >
+              {notificationsEnabled ? (
+                <>
+                  <Bell className="h-5 w-5" />
+                  Notifications On
+                </>
+              ) : (
+                <>
+                  <BellOff className="h-5 w-5" />
+                  Notifications Off
+                </>
+              )}
+            </Button>
+          )}
           <Button
             variant="ghost"
             className="w-full justify-start gap-3"

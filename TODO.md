@@ -25,7 +25,7 @@
 
 ## Real-time Updates
 - [x] WebSocket connection for live trade updates instead of manual refresh
-- [ ] Desktop notifications when trades are mirrored (or fail)
+- [x] Desktop notifications when trades are mirrored (or fail)
 
 ## Quality of Life
 - [x] Dark mode toggle
