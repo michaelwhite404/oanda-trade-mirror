@@ -327,9 +327,9 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
                             {mirror.scalingMode === 'dynamic' ? 'NAV-based' : 'Static'}
                           </Badge>
                           {mirror.scalingMode === 'static' && (
-                            <>
+                            <div className="flex items-center gap-1">
                               {editingScaleFactor === mirror._id ? (
-                                <div className="flex items-center gap-1">
+                                <>
                                   <Input
                                     type="number"
                                     step="0.01"
@@ -355,20 +355,36 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
                                   >
                                     <X className="h-3 w-3" />
                                   </Button>
-                                </div>
+                                </>
                               ) : (
-                                <span
-                                  className="flex cursor-pointer items-center gap-1 hover:text-foreground"
-                                  onClick={() => {
-                                    setEditingScaleFactor(mirror._id);
-                                    setNewScaleFactor(String(mirror.scaleFactor));
-                                  }}
-                                >
-                                  {mirror.scaleFactor}x
-                                  <Edit2 className="h-3 w-3" />
-                                </span>
+                                <>
+                                  <div className="flex gap-0.5">
+                                    {[0.5, 1, 2].map((factor) => (
+                                      <Button
+                                        key={factor}
+                                        variant={mirror.scaleFactor === factor ? 'default' : 'outline'}
+                                        size="sm"
+                                        className="h-6 px-2 text-xs"
+                                        onClick={() => updateMirrorMutation.mutate({ id: mirror._id, scaleFactor: factor })}
+                                        disabled={updateMirrorMutation.isPending}
+                                      >
+                                        {factor}x
+                                      </Button>
+                                    ))}
+                                  </div>
+                                  <span
+                                    className="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                                    onClick={() => {
+                                      setEditingScaleFactor(mirror._id);
+                                      setNewScaleFactor(String(mirror.scaleFactor));
+                                    }}
+                                    title="Custom scale factor"
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </span>
+                                </>
                               )}
-                            </>
+                            </div>
                           )}
                         </div>
                       </div>

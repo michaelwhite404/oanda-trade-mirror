@@ -19,7 +19,7 @@
 ## Account Management
 - [x] Dynamic NAV-based scaling (auto-scale based on account balance ratio)
 - [x] Pause/resume mirroring without deleting accounts
-- [ ] Quick scale factor adjustment buttons (0.5x, 1x, 2x)
+- [x] Quick scale factor adjustment buttons (0.5x, 1x, 2x)
 - [x] Bulk actions (pause all mirrors, resume all)
 - [x] Show sync status - whether mirrors are caught up with source
 
