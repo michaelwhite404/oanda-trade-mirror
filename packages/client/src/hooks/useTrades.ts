@@ -56,6 +56,14 @@ export function useHealth() {
   });
 }
 
+export function useStreamStatus() {
+  return useQuery({
+    queryKey: ['streamStatus'],
+    queryFn: () => api.getStreamStatus(),
+    refetchInterval: 10000, // Check every 10 seconds
+  });
+}
+
 export function useBalances() {
   return useQuery({
     queryKey: ['balances'],

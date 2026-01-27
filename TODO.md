@@ -8,7 +8,7 @@
 - [x] Account balances fetched from OANDA API
 - [x] Open positions view across all accounts
 - [x] P&L summary / trade statistics (win rate, total profit/loss)
-- [ ] Connection status indicator showing if OANDA API is reachable
+- [x] Connection status indicator showing if OANDA API is reachable
 
 ## Trade Management
 - [x] Retry button for failed mirror executions

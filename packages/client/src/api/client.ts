@@ -165,6 +165,12 @@ export const api = {
     return handleResponse<{ status: string; timestamp: string }>(response);
   },
 
+  // Stream status
+  async getStreamStatus() {
+    const response = await fetch(`${BASE_URL}/streams/status`);
+    return handleResponse<StreamStatusResponse>(response);
+  },
+
   // Balances
   async getBalances() {
     const response = await fetch(`${BASE_URL}/accounts/balances`);
@@ -405,4 +411,16 @@ export interface SyncStatus {
   failedCount: number;
   lastTradeAt: string | null;
   mirrorStatus: MirrorSyncStatus[];
+}
+
+export interface StreamInfo {
+  accountId: string;
+  oandaAccountId: string;
+  status: 'connecting' | 'connected' | 'reconnecting' | 'fallback' | 'stopped';
+}
+
+export interface StreamStatusResponse {
+  overallStatus: 'connected' | 'degraded' | 'disconnected';
+  streamCount: number;
+  streams: StreamInfo[];
 }
