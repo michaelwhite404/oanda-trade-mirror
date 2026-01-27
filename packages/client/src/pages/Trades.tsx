@@ -14,6 +14,7 @@ import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { TradeTable } from '@/components/trades/TradeTable';
 import { TradeFilters } from '@/components/trades/TradeFilters';
+import { PendingTrades } from '@/components/trades/PendingTrades';
 import { PlaceTradeDialog, TradeFormData } from '@/components/trades/PlaceTradeDialog';
 import { GetTradesParams } from '@/api/client';
 import { Plus, RefreshCw, Download } from 'lucide-react';
@@ -130,6 +131,7 @@ export default function Trades() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <PendingTrades />
           {!selectedSource ? (
             <p className="text-muted-foreground">
               Select a source account to view trades

@@ -7,6 +7,7 @@ import { useGlobalRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { OpenPositions } from '@/components/positions/OpenPositions';
 import { TradeStats } from '@/components/stats/TradeStats';
+import { PendingTrades } from '@/components/trades/PendingTrades';
 import { Activity, Users, TrendingUp, AlertCircle, Wallet } from 'lucide-react';
 import { AccountBalance } from '@/api/client';
 
@@ -192,6 +193,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <PendingTrades />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

@@ -14,7 +14,7 @@
 - [x] Retry button for failed mirror executions
 - [x] Export trade history to CSV
 - [x] Trade filtering/search (by instrument, date range, side)
-- [ ] Show pending trades that are being mirrored
+- [x] Show pending trades that are being mirrored
 
 ## Account Management
 - [x] Dynamic NAV-based scaling (auto-scale based on account balance ratio)
