@@ -287,6 +287,10 @@ export class MirrorOrchestrator {
           details: { successCount },
         });
       }
+
+      // Update lastTransactionId after successful processing
+      // This ensures we don't skip transactions if processing fails partway through
+      await accountService.updateLastTransactionId(sourceAccountId, trade.transactionId);
     } catch (error) {
       await auditService.error('trade', 'Error processing trade', {
         sourceAccountId,

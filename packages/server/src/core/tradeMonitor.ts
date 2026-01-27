@@ -59,12 +59,10 @@ export const checkForNewTrades = async (
     );
 
     const transactions = res.data.transactions;
-    const newLastTransactionId = res.data.lastTransactionID;
 
-    // Update last transaction ID if there are new transactions
-    if (newLastTransactionId !== lastTransactionId) {
-      await accountService.updateLastTransactionId(sourceAccountId, newLastTransactionId);
-    }
+    // NOTE: We do NOT update lastTransactionId here.
+    // It will be updated after each trade is successfully processed
+    // to avoid losing trades if processing fails partway through.
 
     // Filter for ORDER_FILL transactions only
     const orderFills = transactions.filter(isOrderFillTransaction) as OandaOrderFillTransaction[];
