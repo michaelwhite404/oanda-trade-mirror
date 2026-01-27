@@ -130,6 +130,13 @@ export const api = {
     return handleResponse<SyncStatus>(response);
   },
 
+  async retryMirrorExecution(tradeId: string, mirrorAccountId: string) {
+    const response = await fetch(`${BASE_URL}/trades/${tradeId}/retry/${mirrorAccountId}`, {
+      method: 'POST',
+    });
+    return handleResponse<{ success: boolean; executedUnits?: number; oandaTransactionId?: string; error?: string }>(response);
+  },
+
   async placeTrade(sourceId: string, data: PlaceTradeRequest) {
     const response = await fetch(`${BASE_URL}/trades/${sourceId}`, {
       method: 'POST',

@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import { placeMarketOrder, getAccountSummary } from '../oanda/oandaApi';
-import { TradeHistoryDocument, MirrorAccountDocument, SourceAccountDocument } from '../db';
+import { TradeHistoryDocument, MirrorAccountDocument, SourceAccountDocument, MirrorAccount, SourceAccount } from '../db';
 import { TradeInstruction } from '../types/models';
 import { tradeHistoryService } from '../services/tradeHistoryService';
 import { auditService } from '../services/auditService';
@@ -203,4 +203,124 @@ export const mirrorTrade = async (
   }
 
   return results;
+};
+
+export const retryMirrorExecution = async (
+  tradeId: Types.ObjectId,
+  mirrorAccountId: Types.ObjectId
+): Promise<MirrorResult> => {
+  // Get the trade
+  const trade = await tradeHistoryService.getTradeById(tradeId);
+  if (!trade) {
+    throw new Error('Trade not found');
+  }
+
+  // Find the failed execution
+  const execution = trade.mirrorExecutions.find(
+    (e) => e.mirrorAccountId.toString() === mirrorAccountId.toString()
+  );
+  if (!execution) {
+    throw new Error('Mirror execution not found for this trade');
+  }
+  if (execution.status !== 'failed') {
+    throw new Error('Can only retry failed executions');
+  }
+
+  // Get the mirror account
+  const mirror = await MirrorAccount.findById(mirrorAccountId);
+  if (!mirror) {
+    throw new Error('Mirror account not found');
+  }
+
+  // Get the source account for dynamic scaling
+  const source = await SourceAccount.findById(trade.sourceAccountId);
+  if (!source) {
+    throw new Error('Source account not found');
+  }
+
+  // Calculate scale factor
+  const scaleResult = await calculateScaleFactor(source, mirror);
+  const scaledUnits = Math.round(trade.units * scaleResult.scaleFactor);
+
+  if (scaledUnits === 0) {
+    throw new Error('Scaled units would be zero');
+  }
+
+  const instruction: TradeInstruction = {
+    instrument: trade.instrument,
+    units: scaledUnits,
+    side: trade.side,
+    type: 'MARKET',
+  };
+
+  try {
+    const response = await placeMarketOrder(
+      mirror.oandaAccountId,
+      mirror.apiToken,
+      instruction,
+      mirror.environment
+    );
+
+    const oandaTransactionId = response.data?.orderFillTransaction?.id ||
+      response.data?.orderCreateTransaction?.id ||
+      null;
+
+    // Update trade history with successful execution
+    await tradeHistoryService.updateMirrorExecution(tradeId, {
+      mirrorAccountId,
+      oandaAccountId: mirror.oandaAccountId,
+      status: 'success',
+      executedUnits: scaledUnits,
+      oandaTransactionId,
+    });
+
+    await auditService.info('trade', 'Mirror execution retry succeeded', {
+      sourceAccountId: trade.sourceAccountId as Types.ObjectId,
+      mirrorAccountId,
+      transactionId: trade.sourceTransactionId,
+      details: {
+        instrument: trade.instrument,
+        units: scaledUnits,
+        scaleFactor: scaleResult.scaleFactor,
+        scalingMode: scaleResult.mode,
+        oandaTransactionId,
+      },
+    });
+
+    return {
+      mirrorAccountId,
+      oandaAccountId: mirror.oandaAccountId,
+      success: true,
+      oandaTransactionId,
+      executedUnits: scaledUnits,
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Update trade history with failed execution (again)
+    await tradeHistoryService.updateMirrorExecution(tradeId, {
+      mirrorAccountId,
+      oandaAccountId: mirror.oandaAccountId,
+      status: 'failed',
+      errorMessage,
+    });
+
+    await auditService.warn('trade', 'Mirror execution retry failed', {
+      sourceAccountId: trade.sourceAccountId as Types.ObjectId,
+      mirrorAccountId,
+      transactionId: trade.sourceTransactionId,
+      details: {
+        instrument: trade.instrument,
+        units: scaledUnits,
+        error: errorMessage,
+      },
+    });
+
+    return {
+      mirrorAccountId,
+      oandaAccountId: mirror.oandaAccountId,
+      success: false,
+      errorMessage,
+    };
+  }
 };

@@ -11,7 +11,7 @@
 - [ ] Connection status indicator showing if OANDA API is reachable
 
 ## Trade Management
-- [ ] Retry button for failed mirror executions
+- [x] Retry button for failed mirror executions
 - [x] Export trade history to CSV
 - [x] Trade filtering/search (by instrument, date range, side)
 - [ ] Show pending trades that are being mirrored

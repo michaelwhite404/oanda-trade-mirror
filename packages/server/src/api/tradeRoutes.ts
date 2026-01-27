@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { tradeHistoryService } from '../services/tradeHistoryService';
 import { accountService } from '../services/accountService';
 import { placeMarketOrder } from '../oanda/oandaApi';
+import { retryMirrorExecution } from '../core/tradeDispatcher';
 import { TradeInstruction } from '../types/models';
 import { auditService } from '../services/auditService';
 
@@ -63,6 +64,42 @@ router.get('/:sourceId/sync-status', async (req: Request, res: Response) => {
     res.json(syncStatus);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// POST /api/trades/:tradeId/retry/:mirrorAccountId - Retry a failed mirror execution
+router.post('/:tradeId/retry/:mirrorAccountId', async (req: Request, res: Response) => {
+  try {
+    const { tradeId, mirrorAccountId } = req.params;
+
+    if (!Types.ObjectId.isValid(tradeId)) {
+      res.status(400).json({ error: 'Invalid trade ID' });
+      return;
+    }
+    if (!Types.ObjectId.isValid(mirrorAccountId)) {
+      res.status(400).json({ error: 'Invalid mirror account ID' });
+      return;
+    }
+
+    const result = await retryMirrorExecution(
+      new Types.ObjectId(tradeId),
+      new Types.ObjectId(mirrorAccountId)
+    );
+
+    if (result.success) {
+      res.json({
+        success: true,
+        executedUnits: result.executedUnits,
+        oandaTransactionId: result.oandaTransactionId,
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.errorMessage,
+      });
+    }
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
   }
 });
 

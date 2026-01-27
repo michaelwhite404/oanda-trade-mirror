@@ -88,3 +88,22 @@ export function useSyncStatus(sourceId: string | null) {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 }
+
+export function useRetryMirrorExecution(sourceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ tradeId, mirrorAccountId }: { tradeId: string; mirrorAccountId: string }) =>
+      api.retryMirrorExecution(tradeId, mirrorAccountId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trades', sourceId] });
+      queryClient.invalidateQueries({ queryKey: ['syncStatus', sourceId] });
+      toast.success('Mirror execution retried successfully');
+    },
+    onError: (error: Error) => {
+      toast.error('Retry failed', {
+        description: error.message,
+      });
+    },
+  });
+}

@@ -10,11 +10,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Trade } from '@/api/client';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useRetryMirrorExecution } from '@/hooks/useTrades';
+import { ChevronDown, ChevronRight, RotateCcw } from 'lucide-react';
 
 interface TradeTableProps {
   trades: Trade[];
   isLoading: boolean;
+  sourceId: string | null;
 }
 
 function MirrorStatusBadges({ trade }: { trade: Trade }) {
@@ -33,7 +35,17 @@ function MirrorStatusBadges({ trade }: { trade: Trade }) {
   );
 }
 
-function MirrorExecutionDetails({ trade }: { trade: Trade }) {
+function MirrorExecutionDetails({
+  trade,
+  sourceId,
+  onRetry,
+  isRetrying,
+}: {
+  trade: Trade;
+  sourceId: string | null;
+  onRetry: (tradeId: string, mirrorAccountId: string) => void;
+  isRetrying: boolean;
+}) {
   return (
     <div className="mt-3 rounded-lg bg-muted/50 p-3">
       <h4 className="mb-2 text-sm font-medium">Mirror Executions</h4>
@@ -57,17 +69,33 @@ function MirrorExecutionDetails({ trade }: { trade: Trade }) {
                   <p className="truncate text-xs text-destructive">{exec.errorMessage}</p>
                 )}
               </div>
-              <Badge
-                variant={
-                  exec.status === 'success'
-                    ? 'success'
-                    : exec.status === 'failed'
-                    ? 'destructive'
-                    : 'warning'
-                }
-              >
-                {exec.status}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {exec.status === 'failed' && sourceId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRetry(trade._id, exec.mirrorAccountId);
+                    }}
+                    disabled={isRetrying}
+                  >
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                    Retry
+                  </Button>
+                )}
+                <Badge
+                  variant={
+                    exec.status === 'success'
+                      ? 'success'
+                      : exec.status === 'failed'
+                      ? 'destructive'
+                      : 'warning'
+                  }
+                >
+                  {exec.status}
+                </Badge>
+              </div>
             </div>
           ))}
         </div>
@@ -79,8 +107,13 @@ function MirrorExecutionDetails({ trade }: { trade: Trade }) {
   );
 }
 
-export function TradeTable({ trades, isLoading }: TradeTableProps) {
+export function TradeTable({ trades, isLoading, sourceId }: TradeTableProps) {
   const [expandedTrade, setExpandedTrade] = useState<string | null>(null);
+  const retryMutation = useRetryMirrorExecution(sourceId || '');
+
+  const handleRetry = (tradeId: string, mirrorAccountId: string) => {
+    retryMutation.mutate({ tradeId, mirrorAccountId });
+  };
 
   if (isLoading) {
     return <p className="text-muted-foreground">Loading trades...</p>;
@@ -128,7 +161,14 @@ export function TradeTable({ trades, isLoading }: TradeTableProps) {
               <div className="mt-2">
                 <MirrorStatusBadges trade={trade} />
               </div>
-              {isExpanded && <MirrorExecutionDetails trade={trade} />}
+              {isExpanded && (
+                <MirrorExecutionDetails
+                  trade={trade}
+                  sourceId={sourceId}
+                  onRetry={handleRetry}
+                  isRetrying={retryMutation.isPending}
+                />
+              )}
             </div>
           );
         })}
@@ -216,17 +256,33 @@ export function TradeTable({ trades, isLoading }: TradeTableProps) {
                                       </p>
                                     )}
                                   </div>
-                                  <Badge
-                                    variant={
-                                      exec.status === 'success'
-                                        ? 'success'
-                                        : exec.status === 'failed'
-                                        ? 'destructive'
-                                        : 'warning'
-                                    }
-                                  >
-                                    {exec.status}
-                                  </Badge>
+                                  <div className="flex items-center gap-2">
+                                    {exec.status === 'failed' && sourceId && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRetry(trade._id, exec.mirrorAccountId);
+                                        }}
+                                        disabled={retryMutation.isPending}
+                                      >
+                                        <RotateCcw className="mr-1 h-3 w-3" />
+                                        Retry
+                                      </Button>
+                                    )}
+                                    <Badge
+                                      variant={
+                                        exec.status === 'success'
+                                          ? 'success'
+                                          : exec.status === 'failed'
+                                          ? 'destructive'
+                                          : 'warning'
+                                      }
+                                    >
+                                      {exec.status}
+                                    </Badge>
+                                  </div>
                                 </div>
                               ))}
                             </div>

@@ -104,6 +104,10 @@ class TradeHistoryService {
     });
   }
 
+  async getTradeById(tradeId: Types.ObjectId): Promise<TradeHistoryDocument | null> {
+    return TradeHistory.findById(tradeId);
+  }
+
   async getPendingMirrorExecutions(
     tradeHistoryId: Types.ObjectId
   ): Promise<IMirrorExecution[]> {

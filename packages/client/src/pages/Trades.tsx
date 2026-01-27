@@ -118,7 +118,7 @@ export default function Trades() {
           ) : (
             <>
               <TradeFilters filters={filters} onFiltersChange={setFilters} />
-              <TradeTable trades={trades} isLoading={tradesLoading} />
+              <TradeTable trades={trades} isLoading={tradesLoading} sourceId={selectedSource} />
             </>
           )}
         </CardContent>
