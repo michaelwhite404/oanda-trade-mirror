@@ -34,10 +34,20 @@ export function useNotifications() {
         if (result === 'granted') {
           setEnabled(true);
           localStorage.setItem('notifications', 'true');
+          // Show test notification
+          new Notification('Notifications Enabled', {
+            body: 'You will be notified when trades are mirrored',
+            icon: '/favicon.ico',
+          });
         }
       } else if (permission === 'granted') {
         setEnabled(true);
         localStorage.setItem('notifications', 'true');
+        // Show test notification
+        new Notification('Notifications Enabled', {
+          body: 'You will be notified when trades are mirrored',
+          icon: '/favicon.ico',
+        });
       }
     } else {
       // Disabling
