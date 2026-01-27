@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useSourceAccounts, useMirrorAccounts } from '@/hooks/useAccounts';
 import { useTrades, useHealth, useLogs, useBalances } from '@/hooks/useTrades';
 import { useGlobalRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
@@ -8,6 +9,38 @@ import { OpenPositions } from '@/components/positions/OpenPositions';
 import { TradeStats } from '@/components/stats/TradeStats';
 import { Activity, Users, TrendingUp, AlertCircle, Wallet } from 'lucide-react';
 import { AccountBalance } from '@/api/client';
+
+function BalanceCardSkeleton() {
+  return (
+    <div className="rounded-lg border p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-5 w-32" />
+        <div className="flex gap-2">
+          <Skeleton className="h-5 w-14" />
+          <Skeleton className="h-5 w-16" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <div className="space-y-1">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+        <div className="space-y-1">
+          <Skeleton className="h-3 w-8" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <div className="space-y-1">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-4 w-8" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function formatCurrency(value: string | undefined, currency: string | undefined) {
   if (!value) return '—';
@@ -79,7 +112,7 @@ export default function Dashboard() {
 
   const firstSourceId = sources[0]?._id;
   const { data: mirrors = [] } = useMirrorAccounts(firstSourceId || null);
-  const { data: trades = [] } = useTrades(firstSourceId || null, 10);
+  const { data: trades = [] } = useTrades(firstSourceId || null, { limit: 10 });
 
   const todayTrades = trades.filter((t) => {
     const tradeDate = new Date(t.createdAt);
@@ -169,7 +202,10 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           {balancesLoading ? (
-            <p className="text-sm text-muted-foreground">Loading balances...</p>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <BalanceCardSkeleton />
+              <BalanceCardSkeleton />
+            </div>
           ) : !balancesData?.sources.length ? (
             <p className="text-sm text-muted-foreground">No accounts configured</p>
           ) : (

@@ -1,8 +1,50 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useStats } from '@/hooks/useTrades';
 import { AccountStatsData } from '@/api/client';
-import { BarChart3, TrendingUp, TrendingDown, Target, Activity } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
+
+function StatsCardSkeleton() {
+  return (
+    <div className="rounded-lg border p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-3 w-40" />
+        </div>
+        <Skeleton className="h-5 w-16" />
+      </div>
+      <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
+        <Skeleton className="h-8 w-8" />
+        <div className="space-y-1">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-7 w-28" />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="text-center space-y-1">
+            <Skeleton className="h-3 w-12 mx-auto" />
+            <Skeleton className="h-5 w-8 mx-auto" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-14 w-full" />
+      </div>
+      <div className="grid grid-cols-3 gap-2 border-t pt-3">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="text-center space-y-1">
+            <Skeleton className="h-3 w-16 mx-auto" />
+            <Skeleton className="h-5 w-10 mx-auto" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-US', {
@@ -138,7 +180,9 @@ export function TradeStats() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Loading statistics...</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <StatsCardSkeleton />
+          </div>
         </CardContent>
       </Card>
     );

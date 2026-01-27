@@ -1,9 +1,32 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useSourceAccounts, useCreateSourceAccount } from '@/hooks/useAccounts';
 import { SourceAccountCard } from '@/components/accounts/SourceAccountCard';
 import { AddAccountDialog, AccountFormData } from '@/components/accounts/AddAccountDialog';
 import { Plus } from 'lucide-react';
+
+function AccountCardSkeleton() {
+  return (
+    <div className="rounded-lg border bg-card p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <Skeleton className="h-8 w-8 rounded-full" />
+      </div>
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </div>
+      <div className="border-t pt-4 space-y-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+    </div>
+  );
+}
 
 export default function Accounts() {
   const [showAddSource, setShowAddSource] = useState(false);
@@ -32,7 +55,10 @@ export default function Accounts() {
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Loading accounts...</p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <AccountCardSkeleton />
+          <AccountCardSkeleton />
+        </div>
       ) : sources.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">

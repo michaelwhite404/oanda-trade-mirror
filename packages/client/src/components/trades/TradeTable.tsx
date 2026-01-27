@@ -9,9 +9,42 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Trade } from '@/api/client';
 import { useRetryMirrorExecution } from '@/hooks/useTrades';
 import { ChevronDown, ChevronRight, RotateCcw } from 'lucide-react';
+
+function TradeRowSkeleton() {
+  return (
+    <TableRow>
+      <TableCell><Skeleton className="h-6 w-6" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+      <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+      <TableCell className="text-right"><Skeleton className="h-4 w-12 ml-auto" /></TableCell>
+      <TableCell className="hidden lg:table-cell text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+    </TableRow>
+  );
+}
+
+function TradeCardSkeleton() {
+  return (
+    <div className="rounded-lg border p-3 space-y-2">
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-5 w-12" />
+          </div>
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <Skeleton className="h-4 w-16" />
+      </div>
+      <Skeleton className="h-5 w-20" />
+    </div>
+  );
+}
 
 interface TradeTableProps {
   trades: Trade[];
@@ -116,7 +149,37 @@ export function TradeTable({ trades, isLoading, sourceId }: TradeTableProps) {
   };
 
   if (isLoading) {
-    return <p className="text-muted-foreground">Loading trades...</p>;
+    return (
+      <>
+        <div className="space-y-3 md:hidden">
+          <TradeCardSkeleton />
+          <TradeCardSkeleton />
+          <TradeCardSkeleton />
+        </div>
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-8"></TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Instrument</TableHead>
+                <TableHead>Side</TableHead>
+                <TableHead className="text-right">Units</TableHead>
+                <TableHead className="hidden text-right lg:table-cell">Price</TableHead>
+                <TableHead>Mirror Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TradeRowSkeleton />
+              <TradeRowSkeleton />
+              <TradeRowSkeleton />
+              <TradeRowSkeleton />
+              <TradeRowSkeleton />
+            </TableBody>
+          </Table>
+        </div>
+      </>
+    );
   }
 
   if (trades.length === 0) {

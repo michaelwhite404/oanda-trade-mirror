@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   useMirrorAccounts,
   useDeleteSourceAccount,
@@ -213,7 +214,18 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
               </div>
 
               {isLoading ? (
-                <p className="text-sm text-muted-foreground">Loading...</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-1">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Skeleton className="h-8 w-16" />
+                      <Skeleton className="h-8 w-8" />
+                    </div>
+                  </div>
+                </div>
               ) : mirrors.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No mirror accounts</p>
               ) : (

@@ -2,7 +2,7 @@
 
 ## User Feedback
 - [x] Toast notifications for actions (account created, trade placed, errors)
-- [ ] Loading skeletons instead of "Loading..." text
+- [x] Loading skeletons instead of "Loading..." text
 
 ## Dashboard Enhancements
 - [x] Account balances fetched from OANDA API

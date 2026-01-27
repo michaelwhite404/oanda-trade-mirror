@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -19,6 +20,33 @@ import {
 } from '@/components/ui/table';
 import { useLogs } from '@/hooks/useTrades';
 import { RefreshCw } from 'lucide-react';
+
+function LogRowSkeleton() {
+  return (
+    <TableRow>
+      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+      <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+      <TableCell><Skeleton className="h-5 w-14" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+      <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-32" /></TableCell>
+    </TableRow>
+  );
+}
+
+function LogCardSkeleton() {
+  return (
+    <div className="rounded-lg border p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-12" />
+          <Skeleton className="h-5 w-14" />
+        </div>
+        <Skeleton className="h-4 w-24" />
+      </div>
+      <Skeleton className="h-4 w-3/4" />
+    </div>
+  );
+}
 
 type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'all';
 type LogCategory = 'trade' | 'account' | 'system' | 'api' | 'all';
@@ -106,7 +134,35 @@ export default function Logs() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-muted-foreground">Loading logs...</p>
+            <>
+              <div className="space-y-3 md:hidden">
+                <LogCardSkeleton />
+                <LogCardSkeleton />
+                <LogCardSkeleton />
+                <LogCardSkeleton />
+                <LogCardSkeleton />
+              </div>
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Timestamp</TableHead>
+                      <TableHead>Level</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead className="hidden lg:table-cell">Details</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <LogRowSkeleton />
+                    <LogRowSkeleton />
+                    <LogRowSkeleton />
+                    <LogRowSkeleton />
+                    <LogRowSkeleton />
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           ) : logs.length === 0 ? (
             <p className="text-muted-foreground">No logs found</p>
           ) : (

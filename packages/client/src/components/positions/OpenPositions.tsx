@@ -1,8 +1,35 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { usePositions } from '@/hooks/useTrades';
 import { AccountPositions, Position } from '@/api/client';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+
+function PositionCardSkeleton() {
+  return (
+    <div className="rounded-lg border p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+        <Skeleton className="h-5 w-20" />
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between rounded border p-2">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-14" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <div className="space-y-1 text-right">
+            <Skeleton className="h-4 w-16 ml-auto" />
+            <Skeleton className="h-3 w-12 ml-auto" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function PositionRow({ position }: { position: Position }) {
   const side = position.long ? 'long' : 'short';
@@ -76,7 +103,10 @@ export function OpenPositions() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Loading positions...</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <PositionCardSkeleton />
+            <PositionCardSkeleton />
+          </div>
         </CardContent>
       </Card>
     );
