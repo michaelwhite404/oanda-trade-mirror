@@ -11,12 +11,14 @@ import {
   useCreateMirrorAccount,
   useUpdateSourceAccount,
   useToggleMirrorAccount,
+  usePauseAllMirrors,
+  useResumeAllMirrors,
 } from '@/hooks/useAccounts';
 import { useSyncStatus } from '@/hooks/useTrades';
 import { SourceAccount, MirrorAccount, ScalingMode } from '@/api/client';
 import { AddAccountDialog, AccountFormData } from './AddAccountDialog';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
-import { Plus, Trash2, Edit2, Check, X, Pause, Play, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Pause, Play, CheckCircle2, AlertCircle, Clock, PauseCircle, PlayCircle } from 'lucide-react';
 
 interface SourceAccountCardProps {
   source: SourceAccount;
@@ -41,6 +43,8 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
   const createMirrorMutation = useCreateMirrorAccount(source._id);
   const updateSourceMutation = useUpdateSourceAccount();
   const toggleMirrorMutation = useToggleMirrorAccount(source._id);
+  const pauseAllMutation = usePauseAllMirrors(source._id);
+  const resumeAllMutation = useResumeAllMirrors(source._id);
 
   const handleAddMirror = async (data: AccountFormData) => {
     await createMirrorMutation.mutateAsync({
@@ -172,14 +176,40 @@ export function SourceAccountCard({ source }: SourceAccountCardProps) {
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <h4 className="font-medium">Mirror Accounts</h4>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAddMirror(true)}
-                >
-                  <Plus className="mr-1 h-4 w-4" />
-                  Add Mirror
-                </Button>
+                <div className="flex items-center gap-2">
+                  {mirrors.length > 0 && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => pauseAllMutation.mutate()}
+                        disabled={pauseAllMutation.isPending || mirrors.every((m) => !m.isActive)}
+                        title="Pause all mirrors"
+                      >
+                        <PauseCircle className="mr-1 h-4 w-4" />
+                        Pause All
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => resumeAllMutation.mutate()}
+                        disabled={resumeAllMutation.isPending || mirrors.every((m) => m.isActive)}
+                        title="Resume all mirrors"
+                      >
+                        <PlayCircle className="mr-1 h-4 w-4" />
+                        Resume All
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddMirror(true)}
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    Add Mirror
+                  </Button>
+                </div>
               </div>
 
               {isLoading ? (

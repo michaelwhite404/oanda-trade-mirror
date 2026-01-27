@@ -150,6 +150,44 @@ export function useToggleMirrorAccount(sourceId: string) {
   });
 }
 
+export function usePauseAllMirrors(sourceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.pauseAllMirrors(sourceId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['mirrorAccounts', sourceId] });
+      toast.success('All mirrors paused', {
+        description: `${data.updatedCount} mirror account(s) paused`,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to pause mirrors', {
+        description: error.message,
+      });
+    },
+  });
+}
+
+export function useResumeAllMirrors(sourceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.resumeAllMirrors(sourceId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['mirrorAccounts', sourceId] });
+      toast.success('All mirrors resumed', {
+        description: `${data.updatedCount} mirror account(s) resumed`,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to resume mirrors', {
+        description: error.message,
+      });
+    },
+  });
+}
+
 export function useValidateCredentials() {
   return useMutation({
     mutationFn: (data: ValidateCredentialsRequest) => api.validateCredentials(data),

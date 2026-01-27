@@ -206,6 +206,38 @@ router.post('/mirrors/:id/toggle', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/accounts/sources/:id/mirrors/pause-all - Pause all mirrors for a source
+router.post('/sources/:id/mirrors/pause-all', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!Types.ObjectId.isValid(id)) {
+      res.status(400).json({ error: 'Invalid source account ID' });
+      return;
+    }
+
+    const updatedCount = await accountService.setAllMirrorsActive(new Types.ObjectId(id), false);
+    res.json({ success: true, updatedCount });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// POST /api/accounts/sources/:id/mirrors/resume-all - Resume all mirrors for a source
+router.post('/sources/:id/mirrors/resume-all', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!Types.ObjectId.isValid(id)) {
+      res.status(400).json({ error: 'Invalid source account ID' });
+      return;
+    }
+
+    const updatedCount = await accountService.setAllMirrorsActive(new Types.ObjectId(id), true);
+    res.json({ success: true, updatedCount });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 // PATCH /api/accounts/mirrors/:id - Update a mirror account (scaling mode, scale factor, alias)
 router.patch('/mirrors/:id', async (req: Request, res: Response) => {
   try {

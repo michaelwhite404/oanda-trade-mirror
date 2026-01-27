@@ -74,6 +74,20 @@ export const api = {
     return handleResponse<{ success: boolean; isActive: boolean }>(response);
   },
 
+  async pauseAllMirrors(sourceId: string) {
+    const response = await fetch(`${BASE_URL}/accounts/sources/${sourceId}/mirrors/pause-all`, {
+      method: 'POST',
+    });
+    return handleResponse<{ success: boolean; updatedCount: number }>(response);
+  },
+
+  async resumeAllMirrors(sourceId: string) {
+    const response = await fetch(`${BASE_URL}/accounts/sources/${sourceId}/mirrors/resume-all`, {
+      method: 'POST',
+    });
+    return handleResponse<{ success: boolean; updatedCount: number }>(response);
+  },
+
   async updateMirrorAccount(id: string, data: { scalingMode?: ScalingMode; scaleFactor?: number; alias?: string }) {
     const response = await fetch(`${BASE_URL}/accounts/mirrors/${id}`, {
       method: 'PATCH',

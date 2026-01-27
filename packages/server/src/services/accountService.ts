@@ -153,6 +153,20 @@ class AccountService {
     return newStatus;
   }
 
+  async setAllMirrorsActive(sourceAccountId: Types.ObjectId, isActive: boolean): Promise<number> {
+    const result = await MirrorAccount.updateMany(
+      { sourceAccountId },
+      { isActive }
+    );
+
+    await auditService.info('account', isActive ? 'All mirror accounts resumed' : 'All mirror accounts paused', {
+      sourceAccountId,
+      details: { isActive, updatedCount: result.modifiedCount },
+    });
+
+    return result.modifiedCount;
+  }
+
   async getSourceAccountById(id: Types.ObjectId): Promise<SourceAccountDocument | null> {
     return SourceAccount.findById(id);
   }
