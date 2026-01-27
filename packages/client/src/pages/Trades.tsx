@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,8 +18,12 @@ import { PlaceTradeDialog, TradeFormData } from '@/components/trades/PlaceTradeD
 import { GetTradesParams } from '@/api/client';
 import { Plus, RefreshCw, Download } from 'lucide-react';
 
+const SELECTED_SOURCE_KEY = 'selectedSourceAccount';
+
 export default function Trades() {
-  const [selectedSource, setSelectedSource] = useState<string | null>(null);
+  const [selectedSource, setSelectedSource] = useState<string | null>(() => {
+    return localStorage.getItem(SELECTED_SOURCE_KEY);
+  });
   const [showPlaceTrade, setShowPlaceTrade] = useState(false);
   const [filters, setFilters] = useState<GetTradesParams>({ limit: 100 });
 
@@ -32,10 +36,25 @@ export default function Trades() {
   // Enable real-time updates for selected source
   useRealTimeUpdates(selectedSource);
 
-  // Auto-select first source if none selected
-  if (!selectedSource && sources.length > 0) {
-    setSelectedSource(sources[0]._id);
-  }
+  // Persist selected source to localStorage
+  useEffect(() => {
+    if (selectedSource) {
+      localStorage.setItem(SELECTED_SOURCE_KEY, selectedSource);
+    }
+  }, [selectedSource]);
+
+  // Auto-select source: use stored value if valid, otherwise first source
+  useEffect(() => {
+    if (sources.length === 0) return;
+
+    // Check if current selection is valid
+    const isValidSelection = selectedSource && sources.some(s => s._id === selectedSource);
+
+    if (!isValidSelection) {
+      // Fall back to first source
+      setSelectedSource(sources[0]._id);
+    }
+  }, [sources, selectedSource]);
 
   const placeTradeMutation = usePlaceTrade(selectedSource || '');
 

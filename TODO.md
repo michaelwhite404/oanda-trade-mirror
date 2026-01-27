@@ -30,4 +30,4 @@
 ## Quality of Life
 - [x] Dark mode toggle
 - [ ] Keyboard shortcuts
-- [ ] Remember last selected source account
+- [x] Remember last selected source account
