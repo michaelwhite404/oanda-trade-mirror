@@ -3,21 +3,24 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import { WebSocketProvider } from '@/context/WebSocketContext';
+import { AuthProvider } from '@/context/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcuts';
 import { useNavigationShortcuts } from '@/hooks/useKeyboardShortcuts';
 import Dashboard from '@/pages/Dashboard';
 import Accounts from '@/pages/Accounts';
 import Trades from '@/pages/Trades';
 import Logs from '@/pages/Logs';
+import Login from '@/pages/Login';
 
-function AppContent() {
+function ProtectedLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Enable g+key navigation shortcuts
   useNavigationShortcuts();
 
   return (
-    <>
+    <ProtectedRoute>
       <div className="flex h-screen">
         <Sidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />
         <main className="flex-1 overflow-auto pt-14 lg:pt-0">
@@ -32,18 +35,23 @@ function AppContent() {
         </main>
       </div>
       <KeyboardShortcutsDialog />
-      <Toaster position="bottom-right" richColors />
-    </>
+    </ProtectedRoute>
   );
 }
 
 function App() {
   return (
-    <WebSocketProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </WebSocketProvider>
+    <AuthProvider>
+      <WebSocketProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/*" element={<ProtectedLayout />} />
+          </Routes>
+          <Toaster position="bottom-right" richColors />
+        </BrowserRouter>
+      </WebSocketProvider>
+    </AuthProvider>
   );
 }
 

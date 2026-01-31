@@ -2,13 +2,19 @@ import { Router } from 'express';
 import accountRoutes from './accountRoutes';
 import tradeRoutes from './tradeRoutes';
 import logRoutes from './logRoutes';
+import authRoutes from './authRoutes';
 import { streamManager } from '../streaming/streamManager';
+import { authenticate } from '../middleware/authMiddleware';
 
 const router = Router();
 
-router.use('/accounts', accountRoutes);
-router.use('/trades', tradeRoutes);
-router.use('/logs', logRoutes);
+// Auth routes (public)
+router.use('/auth', authRoutes);
+
+// Protected routes
+router.use('/accounts', authenticate, accountRoutes);
+router.use('/trades', authenticate, tradeRoutes);
+router.use('/logs', authenticate, logRoutes);
 
 // Health check endpoint
 router.get('/health', (_req, res) => {

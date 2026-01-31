@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { createServer } from 'http';
 import { config } from './config/config';
@@ -18,7 +19,11 @@ const httpServer = createServer(app);
 let orchestrator: MirrorOrchestrator | null = null;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173',
+  credentials: true,
+}));
+app.use(cookieParser());
 app.use(express.json());
 
 // API routes

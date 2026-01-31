@@ -5,7 +5,44 @@ interface ApiError {
   details?: unknown;
 }
 
-async function handleResponse<T>(response: Response): Promise<T> {
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshToken(): Promise<boolean> {
+  const response = await fetch(`${BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  return response.ok;
+}
+
+async function handleResponse<T>(response: Response, retryFetch?: () => Promise<Response>): Promise<T> {
+  if (response.status === 401 && retryFetch) {
+    // Token expired, try to refresh
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = refreshToken().finally(() => {
+        isRefreshing = false;
+        refreshPromise = null;
+      });
+    }
+
+    const refreshed = await refreshPromise;
+    if (refreshed) {
+      // Retry the original request
+      const retryResponse = await retryFetch();
+      if (!retryResponse.ok) {
+        const error: ApiError = await retryResponse.json();
+        throw new Error(error.error || 'An error occurred');
+      }
+      return retryResponse.json();
+    }
+
+    // Refresh failed, redirect to login
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
+
   if (!response.ok) {
     const error: ApiError = await response.json();
     throw new Error(error.error || 'An error occurred');
@@ -13,97 +50,116 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+function fetchWithCredentials(url: string, options: RequestInit = {}): Promise<Response> {
+  return fetch(url, {
+    ...options,
+    credentials: 'include',
+  });
+}
+
 export const api = {
   // Source Accounts
   async getSourceAccounts() {
-    const response = await fetch(`${BASE_URL}/accounts/sources`);
-    return handleResponse<SourceAccount[]>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/sources`);
+    const response = await doFetch();
+    return handleResponse<SourceAccount[]>(response, doFetch);
   },
 
   async createSourceAccount(data: CreateSourceAccountRequest) {
-    const response = await fetch(`${BASE_URL}/accounts/sources`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/sources`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return handleResponse<SourceAccount>(response);
+    const response = await doFetch();
+    return handleResponse<SourceAccount>(response, doFetch);
   },
 
   async deleteSourceAccount(id: string) {
-    const response = await fetch(`${BASE_URL}/accounts/sources/${id}`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/sources/${id}`, {
       method: 'DELETE',
     });
-    return handleResponse<{ success: boolean }>(response);
+    const response = await doFetch();
+    return handleResponse<{ success: boolean }>(response, doFetch);
   },
 
   async updateSourceAccount(id: string, data: { alias?: string }) {
-    const response = await fetch(`${BASE_URL}/accounts/sources/${id}`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/sources/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return handleResponse<{ success: boolean }>(response);
+    const response = await doFetch();
+    return handleResponse<{ success: boolean }>(response, doFetch);
   },
 
   // Mirror Accounts
   async getMirrorAccounts(sourceId: string) {
-    const response = await fetch(`${BASE_URL}/accounts/sources/${sourceId}/mirrors`);
-    return handleResponse<MirrorAccount[]>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/sources/${sourceId}/mirrors`);
+    const response = await doFetch();
+    return handleResponse<MirrorAccount[]>(response, doFetch);
   },
 
   async createMirrorAccount(sourceId: string, data: CreateMirrorAccountRequest) {
-    const response = await fetch(`${BASE_URL}/accounts/sources/${sourceId}/mirrors`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/sources/${sourceId}/mirrors`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return handleResponse<MirrorAccount>(response);
+    const response = await doFetch();
+    return handleResponse<MirrorAccount>(response, doFetch);
   },
 
   async deleteMirrorAccount(id: string) {
-    const response = await fetch(`${BASE_URL}/accounts/mirrors/${id}`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/mirrors/${id}`, {
       method: 'DELETE',
     });
-    return handleResponse<{ success: boolean }>(response);
+    const response = await doFetch();
+    return handleResponse<{ success: boolean }>(response, doFetch);
   },
 
   async toggleMirrorAccount(id: string) {
-    const response = await fetch(`${BASE_URL}/accounts/mirrors/${id}/toggle`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/mirrors/${id}/toggle`, {
       method: 'POST',
     });
-    return handleResponse<{ success: boolean; isActive: boolean }>(response);
+    const response = await doFetch();
+    return handleResponse<{ success: boolean; isActive: boolean }>(response, doFetch);
   },
 
   async pauseAllMirrors(sourceId: string) {
-    const response = await fetch(`${BASE_URL}/accounts/sources/${sourceId}/mirrors/pause-all`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/sources/${sourceId}/mirrors/pause-all`, {
       method: 'POST',
     });
-    return handleResponse<{ success: boolean; updatedCount: number }>(response);
+    const response = await doFetch();
+    return handleResponse<{ success: boolean; updatedCount: number }>(response, doFetch);
   },
 
   async resumeAllMirrors(sourceId: string) {
-    const response = await fetch(`${BASE_URL}/accounts/sources/${sourceId}/mirrors/resume-all`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/sources/${sourceId}/mirrors/resume-all`, {
       method: 'POST',
     });
-    return handleResponse<{ success: boolean; updatedCount: number }>(response);
+    const response = await doFetch();
+    return handleResponse<{ success: boolean; updatedCount: number }>(response, doFetch);
   },
 
   async updateMirrorAccount(id: string, data: { scalingMode?: ScalingMode; scaleFactor?: number; alias?: string }) {
-    const response = await fetch(`${BASE_URL}/accounts/mirrors/${id}`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/mirrors/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return handleResponse<{ success: boolean }>(response);
+    const response = await doFetch();
+    return handleResponse<{ success: boolean }>(response, doFetch);
   },
 
   async validateCredentials(data: ValidateCredentialsRequest) {
-    const response = await fetch(`${BASE_URL}/accounts/validate`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return handleResponse<{ valid: boolean; error?: string }>(response);
+    const response = await doFetch();
+    return handleResponse<{ valid: boolean; error?: string }>(response, doFetch);
   },
 
   // Trades
@@ -116,34 +172,39 @@ export const api = {
     if (params.dateFrom) searchParams.set('dateFrom', params.dateFrom);
     if (params.dateTo) searchParams.set('dateTo', params.dateTo);
 
-    const response = await fetch(`${BASE_URL}/trades/${sourceId}?${searchParams}`);
-    return handleResponse<Trade[]>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/trades/${sourceId}?${searchParams}`);
+    const response = await doFetch();
+    return handleResponse<Trade[]>(response, doFetch);
   },
 
   async getTradeDetails(sourceId: string, txnId: string) {
-    const response = await fetch(`${BASE_URL}/trades/${sourceId}/${txnId}`);
-    return handleResponse<Trade>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/trades/${sourceId}/${txnId}`);
+    const response = await doFetch();
+    return handleResponse<Trade>(response, doFetch);
   },
 
   async getSyncStatus(sourceId: string) {
-    const response = await fetch(`${BASE_URL}/trades/${sourceId}/sync-status`);
-    return handleResponse<SyncStatus>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/trades/${sourceId}/sync-status`);
+    const response = await doFetch();
+    return handleResponse<SyncStatus>(response, doFetch);
   },
 
   async retryMirrorExecution(tradeId: string, mirrorAccountId: string) {
-    const response = await fetch(`${BASE_URL}/trades/${tradeId}/retry/${mirrorAccountId}`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/trades/${tradeId}/retry/${mirrorAccountId}`, {
       method: 'POST',
     });
-    return handleResponse<{ success: boolean; executedUnits?: number; oandaTransactionId?: string; error?: string }>(response);
+    const response = await doFetch();
+    return handleResponse<{ success: boolean; executedUnits?: number; oandaTransactionId?: string; error?: string }>(response, doFetch);
   },
 
   async placeTrade(sourceId: string, data: PlaceTradeRequest) {
-    const response = await fetch(`${BASE_URL}/trades/${sourceId}`, {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/trades/${sourceId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return handleResponse<PlaceTradeResponse>(response);
+    const response = await doFetch();
+    return handleResponse<PlaceTradeResponse>(response, doFetch);
   },
 
   // Logs
@@ -155,38 +216,44 @@ export const api = {
     if (params.limit) searchParams.set('limit', String(params.limit));
     if (params.offset) searchParams.set('offset', String(params.offset));
 
-    const response = await fetch(`${BASE_URL}/logs?${searchParams}`);
-    return handleResponse<LogsResponse>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/logs?${searchParams}`);
+    const response = await doFetch();
+    return handleResponse<LogsResponse>(response, doFetch);
   },
 
   // Health
   async getHealth() {
-    const response = await fetch(`${BASE_URL}/health`);
-    return handleResponse<{ status: string; timestamp: string }>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/health`);
+    const response = await doFetch();
+    return handleResponse<{ status: string; timestamp: string }>(response, doFetch);
   },
 
   // Stream status
   async getStreamStatus() {
-    const response = await fetch(`${BASE_URL}/streams/status`);
-    return handleResponse<StreamStatusResponse>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/streams/status`);
+    const response = await doFetch();
+    return handleResponse<StreamStatusResponse>(response, doFetch);
   },
 
   // Balances
   async getBalances() {
-    const response = await fetch(`${BASE_URL}/accounts/balances`);
-    return handleResponse<BalancesResponse>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/balances`);
+    const response = await doFetch();
+    return handleResponse<BalancesResponse>(response, doFetch);
   },
 
   // Positions
   async getPositions() {
-    const response = await fetch(`${BASE_URL}/accounts/positions`);
-    return handleResponse<PositionsResponse>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/positions`);
+    const response = await doFetch();
+    return handleResponse<PositionsResponse>(response, doFetch);
   },
 
   // Stats
   async getStats() {
-    const response = await fetch(`${BASE_URL}/accounts/stats`);
-    return handleResponse<StatsResponse>(response);
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/accounts/stats`);
+    const response = await doFetch();
+    return handleResponse<StatsResponse>(response, doFetch);
   },
 };
 

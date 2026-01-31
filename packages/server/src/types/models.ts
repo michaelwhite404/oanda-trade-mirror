@@ -74,6 +74,20 @@ export interface ITradeHistory {
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 export type LogCategory = 'trade' | 'account' | 'system' | 'api';
 
+export type UserRole = 'admin' | 'viewer';
+
+export interface IUser {
+  username: string;
+  email: string;
+  passwordHash: string;
+  role: UserRole;
+  isActive: boolean;
+  lastLoginAt: Date | null;
+  refreshTokenHash: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface IExecutionLog {
   timestamp: Date;
   level: LogLevel;
