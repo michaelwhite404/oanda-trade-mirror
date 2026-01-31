@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, TrendingUp, FileText, Menu, X, Wifi, WifiOff, AlertTriangle, Moon, Sun, Bell, BellOff } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, FileText, Menu, X, Wifi, WifiOff, AlertTriangle, Moon, Sun, Bell, BellOff, Keyboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -187,6 +187,14 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
                 Dark Mode
               </>
             )}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3"
+            onClick={() => window.dispatchEvent(new CustomEvent('show-shortcuts'))}
+          >
+            <Keyboard className="h-5 w-5" />
+            Keyboard Shortcuts
           </Button>
         </div>
       </div>
