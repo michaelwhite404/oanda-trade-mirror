@@ -235,9 +235,18 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
         {user && (
           <div className="border-t p-4">
             <div className="flex items-center gap-3 px-3 py-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium">
-                {user.username.charAt(0).toUpperCase()}
-              </div>
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.username}
+                  className="h-8 w-8 shrink-0 rounded-full"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium">
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">@{user.username}</p>
                 <p className="truncate text-xs text-muted-foreground">{user.role}</p>

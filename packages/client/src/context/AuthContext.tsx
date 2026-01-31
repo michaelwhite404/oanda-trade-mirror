@@ -6,6 +6,8 @@ export interface User {
   email: string;
   role: 'admin' | 'viewer';
   lastLoginAt: string | null;
+  avatarUrl: string | null;
+  authProvider: 'local' | 'google';
 }
 
 interface AuthContextType {

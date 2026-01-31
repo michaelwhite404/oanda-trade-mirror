@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { authService } from '../services/authService';
-import { authenticate, requireRole } from '../middleware/authMiddleware';
+import { passport } from '../config/passport';
+import { authService, OAuthProfile } from '../services/authService';
+import { authenticate } from '../middleware/authMiddleware';
 import { User } from '../db';
 
 const router = Router();
@@ -11,6 +12,9 @@ const COOKIE_OPTIONS = {
   sameSite: 'lax' as const,
   path: '/',
 };
+
+// Frontend URL for redirects (dev server in development, same origin in production)
+const FRONTEND_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173';
 
 // POST /api/auth/register - Create new user (first user or admin only)
 router.post('/register', async (req: Request, res: Response) => {
@@ -100,9 +104,11 @@ router.post('/login', async (req: Request, res: Response) => {
 
     res.json({ user });
   } catch (error) {
-    if (error instanceof Error && error.message === 'Invalid credentials') {
-      res.status(401).json({ error: 'Invalid credentials' });
-      return;
+    if (error instanceof Error) {
+      if (error.message === 'Invalid credentials' || error.message === 'Please sign in with Google') {
+        res.status(401).json({ error: error.message });
+        return;
+      }
     }
     console.error('[Auth] Login error:', error);
     res.status(500).json({ error: 'Login failed' });
@@ -112,7 +118,7 @@ router.post('/login', async (req: Request, res: Response) => {
 // POST /api/auth/logout - Logout user
 router.post('/logout', authenticate, async (req: Request, res: Response) => {
   try {
-    await authService.logout(req.user!.userId);
+    await authService.logout(req.authUser!.userId);
 
     res.clearCookie('accessToken', COOKIE_OPTIONS);
     res.clearCookie('refreshToken', COOKIE_OPTIONS);
@@ -162,7 +168,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
 // GET /api/auth/me - Get current user
 router.get('/me', authenticate, async (req: Request, res: Response) => {
   try {
-    const user = await authService.getUser(req.user!.userId);
+    const user = await authService.getUser(req.authUser!.userId);
 
     if (!user) {
       res.status(404).json({ error: 'User not found' });
@@ -175,5 +181,43 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to get user' });
   }
 });
+
+// GET /api/auth/google - Initiate Google OAuth
+router.get('/google', passport.authenticate('google', { session: false }));
+
+// GET /api/auth/google/callback - Google OAuth callback
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { session: false, failureRedirect: `${FRONTEND_URL}/login?error=oauth_failed` }),
+  async (req: Request, res: Response) => {
+    try {
+      const profile = req.user as OAuthProfile;
+
+      if (!profile || !profile.email) {
+        res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
+        return;
+      }
+
+      const { tokens } = await authService.oauthLogin(profile);
+
+      // Set cookies
+      res.cookie('accessToken', tokens.accessToken, {
+        ...COOKIE_OPTIONS,
+        maxAge: 15 * 60 * 1000,
+      });
+
+      res.cookie('refreshToken', tokens.refreshToken, {
+        ...COOKIE_OPTIONS,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      // Redirect to frontend
+      res.redirect(`${FRONTEND_URL}/`);
+    } catch (error) {
+      console.error('[Auth] Google OAuth error:', error);
+      res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
+    }
+  }
+);
 
 export default router;

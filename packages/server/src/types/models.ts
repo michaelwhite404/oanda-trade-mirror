@@ -75,15 +75,19 @@ export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 export type LogCategory = 'trade' | 'account' | 'system' | 'api';
 
 export type UserRole = 'admin' | 'viewer';
+export type AuthProvider = 'local' | 'google';
 
 export interface IUser {
   username: string;
   email: string;
-  passwordHash: string;
+  passwordHash: string | null;
   role: UserRole;
   isActive: boolean;
   lastLoginAt: Date | null;
   refreshTokenHash: string | null;
+  authProvider: AuthProvider;
+  googleId: string | null;
+  avatarUrl: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }

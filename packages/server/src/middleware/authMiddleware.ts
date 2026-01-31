@@ -5,7 +5,7 @@ import { UserRole } from '../types/models';
 declare global {
   namespace Express {
     interface Request {
-      user?: TokenPayload;
+      authUser?: TokenPayload;
     }
   }
 }
@@ -20,7 +20,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
   try {
     const payload = authService.verifyAccessToken(token);
-    req.user = payload;
+    req.authUser = payload;
     next();
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
@@ -29,12 +29,12 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (!req.user) {
+    if (!req.authUser) {
       res.status(401).json({ error: 'Authentication required' });
       return;
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!roles.includes(req.authUser.role)) {
       res.status(403).json({ error: 'Insufficient permissions' });
       return;
     }

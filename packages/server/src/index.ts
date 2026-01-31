@@ -8,6 +8,7 @@ import { connectDatabase, disconnectDatabase } from './config/database';
 import { MirrorOrchestrator } from './core/mirrorOrchestrator';
 import { auditService } from './services/auditService';
 import { websocketServer } from './websocket/websocketServer';
+import { passport, configurePassport } from './config/passport';
 import apiRoutes from './api';
 
 const app = express();
@@ -25,6 +26,10 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json());
+
+// Configure Passport for OAuth
+configurePassport();
+app.use(passport.initialize());
 
 // API routes
 app.use('/api', apiRoutes);

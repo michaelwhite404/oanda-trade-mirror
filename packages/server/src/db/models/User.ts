@@ -22,7 +22,7 @@ const UserSchema = new Schema<UserDocument>(
     },
     passwordHash: {
       type: String,
-      required: true,
+      default: null,
     },
     role: {
       type: String,
@@ -39,6 +39,21 @@ const UserSchema = new Schema<UserDocument>(
       default: null,
     },
     refreshTokenHash: {
+      type: String,
+      default: null,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+    googleId: {
+      type: String,
+      default: null,
+      sparse: true,
+      index: true,
+    },
+    avatarUrl: {
       type: String,
       default: null,
     },

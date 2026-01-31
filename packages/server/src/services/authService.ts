@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User, UserDocument } from '../db';
-import { UserRole } from '../types/models';
+import { UserRole, AuthProvider } from '../types/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 const ACCESS_TOKEN_EXPIRY = '15m';
@@ -25,6 +25,16 @@ export interface UserResponse {
   email: string;
   role: UserRole;
   lastLoginAt: Date | null;
+  avatarUrl: string | null;
+  authProvider: AuthProvider;
+}
+
+export interface OAuthProfile {
+  provider: AuthProvider;
+  providerId: string;
+  email: string;
+  displayName: string;
+  avatarUrl?: string;
 }
 
 class AuthService {
@@ -46,10 +56,83 @@ class AuthService {
       passwordHash,
       role: assignedRole,
       isActive: true,
+      authProvider: 'local',
     });
 
     await user.save();
     return user;
+  }
+
+  async oauthLogin(profile: OAuthProfile): Promise<{ user: UserResponse; tokens: AuthTokens }> {
+    // Check if this is the first user - make them admin
+    const userCount = await User.countDocuments();
+    const assignedRole = userCount === 0 ? 'admin' : 'viewer';
+
+    // Find or create user
+    let user = await User.findOne({
+      $or: [
+        { googleId: profile.providerId },
+        { email: profile.email.toLowerCase() },
+      ],
+    });
+
+    if (user) {
+      // Update OAuth info if user exists but was created with different method
+      if (profile.provider === 'google' && !user.googleId) {
+        user.googleId = profile.providerId;
+      }
+      if (profile.avatarUrl) {
+        user.avatarUrl = profile.avatarUrl;
+      }
+    } else {
+      // Create new user
+      const username = await this.generateUniqueUsername(profile.displayName);
+      user = new User({
+        username,
+        email: profile.email.toLowerCase(),
+        passwordHash: null,
+        role: assignedRole,
+        isActive: true,
+        authProvider: profile.provider,
+        googleId: profile.provider === 'google' ? profile.providerId : null,
+        avatarUrl: profile.avatarUrl || null,
+      });
+    }
+
+    const tokens = await this.generateTokens(user);
+
+    // Store refresh token hash and update login time
+    const refreshTokenHash = await bcrypt.hash(tokens.refreshToken, SALT_ROUNDS);
+    user.refreshTokenHash = refreshTokenHash;
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    return {
+      user: this.toUserResponse(user),
+      tokens,
+    };
+  }
+
+  private async generateUniqueUsername(displayName: string): Promise<string> {
+    // Convert display name to a valid username
+    let baseUsername = displayName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 20);
+
+    if (baseUsername.length < 3) {
+      baseUsername = 'user';
+    }
+
+    let username = baseUsername;
+    let counter = 1;
+
+    while (await User.findOne({ username })) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+
+    return username;
   }
 
   async login(
@@ -63,6 +146,11 @@ class AuthService {
 
     if (!user) {
       throw new Error('Invalid credentials');
+    }
+
+    // Check if user uses OAuth (no password)
+    if (!user.passwordHash) {
+      throw new Error('Please sign in with Google');
     }
 
     const isValid = await bcrypt.compare(password, user.passwordHash);
@@ -171,6 +259,8 @@ class AuthService {
       email: user.email,
       role: user.role,
       lastLoginAt: user.lastLoginAt,
+      avatarUrl: user.avatarUrl,
+      authProvider: user.authProvider,
     };
   }
 }
