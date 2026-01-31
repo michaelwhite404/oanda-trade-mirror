@@ -13,17 +13,26 @@ export interface Shortcut {
   category: 'Navigation' | 'Actions' | 'Toggle';
 }
 
+// Detect if user is on Mac for display purposes
+const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+const modKey = isMac ? '⌘' : 'Ctrl';
+
 export const shortcuts: Shortcut[] = [
-  { keys: 'g d', description: 'Go to Dashboard', category: 'Navigation' },
-  { keys: 'g a', description: 'Go to Accounts', category: 'Navigation' },
-  { keys: 'g t', description: 'Go to Trades', category: 'Navigation' },
-  { keys: 'g l', description: 'Go to Logs', category: 'Navigation' },
-  { keys: 'r', description: 'Refresh data', category: 'Actions' },
-  { keys: 'n', description: 'New item (context-dependent)', category: 'Actions' },
-  { keys: 't', description: 'Toggle dark mode', category: 'Toggle' },
+  { keys: `${modKey} 1`, description: 'Go to Dashboard', category: 'Navigation' },
+  { keys: `${modKey} 2`, description: 'Go to Accounts', category: 'Navigation' },
+  { keys: `${modKey} 3`, description: 'Go to Trades', category: 'Navigation' },
+  { keys: `${modKey} 4`, description: 'Go to Logs', category: 'Navigation' },
+  { keys: `${modKey} R`, description: 'Refresh data', category: 'Actions' },
+  { keys: `${modKey} N`, description: 'New item (context-dependent)', category: 'Actions' },
+  { keys: 'T', description: 'Toggle dark mode', category: 'Toggle' },
   { keys: '?', description: 'Show keyboard shortcuts', category: 'Actions' },
   { keys: 'Esc', description: 'Close dialog', category: 'Actions' },
 ];
+
+// Check if the modifier key is pressed (Cmd on Mac, Ctrl on Windows/Linux)
+function hasModifier(event: KeyboardEvent): boolean {
+  return isMac ? event.metaKey : event.ctrlKey;
+}
 
 export function useKeyboardShortcuts(handlers: ShortcutHandlers = {}) {
   const { toggleTheme } = useTheme();
@@ -43,16 +52,23 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers = {}) {
 
       const key = event.key.toLowerCase();
 
-      // Single key shortcuts
+      // Modifier key shortcuts (Cmd/Ctrl + key)
+      if (hasModifier(event)) {
+        switch (key) {
+          case 'r':
+            event.preventDefault();
+            handlers.onRefresh?.();
+            break;
+          case 'n':
+            event.preventDefault();
+            handlers.onNew?.();
+            break;
+        }
+        return;
+      }
+
+      // Single key shortcuts (no modifier)
       switch (key) {
-        case 'r':
-          event.preventDefault();
-          handlers.onRefresh?.();
-          break;
-        case 'n':
-          event.preventDefault();
-          handlers.onNew?.();
-          break;
         case 't':
           event.preventDefault();
           toggleTheme();
@@ -73,14 +89,11 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers = {}) {
   }, [handleKeyDown]);
 }
 
-// Separate hook for 'g' prefix navigation shortcuts
+// Navigation shortcuts using Cmd/Ctrl + number keys
 export function useNavigationShortcuts() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    let gPressed = false;
-    let gTimeout: ReturnType<typeof setTimeout> | null = null;
-
     const handleKeyDown = (event: KeyboardEvent) => {
       // Don't trigger shortcuts when typing in inputs
       const target = event.target as HTMLElement;
@@ -93,46 +106,32 @@ export function useNavigationShortcuts() {
         return;
       }
 
-      const key = event.key.toLowerCase();
+      // Only handle if modifier key is pressed
+      if (!hasModifier(event)) return;
 
-      if (key === 'g' && !gPressed) {
-        gPressed = true;
-        // Reset after 1 second
-        gTimeout = setTimeout(() => {
-          gPressed = false;
-        }, 1000);
-        return;
-      }
-
-      if (gPressed) {
-        gPressed = false;
-        if (gTimeout) clearTimeout(gTimeout);
-
-        switch (key) {
-          case 'd':
-            event.preventDefault();
-            navigate('/');
-            break;
-          case 'a':
-            event.preventDefault();
-            navigate('/accounts');
-            break;
-          case 't':
-            event.preventDefault();
-            navigate('/trades');
-            break;
-          case 'l':
-            event.preventDefault();
-            navigate('/logs');
-            break;
-        }
+      switch (event.key) {
+        case '1':
+          event.preventDefault();
+          navigate('/');
+          break;
+        case '2':
+          event.preventDefault();
+          navigate('/accounts');
+          break;
+        case '3':
+          event.preventDefault();
+          navigate('/trades');
+          break;
+        case '4':
+          event.preventDefault();
+          navigate('/logs');
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      if (gTimeout) clearTimeout(gTimeout);
     };
   }, [navigate]);
 }

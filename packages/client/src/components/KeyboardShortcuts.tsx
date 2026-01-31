@@ -10,14 +10,20 @@ import { Keyboard } from 'lucide-react';
 
 function ShortcutKey({ keys }: { keys: string }) {
   const keyParts = keys.split(' ');
+  const hasModifier = keyParts.length > 1 && (keyParts[0] === '⌘' || keyParts[0] === 'Ctrl');
+
   return (
     <span className="flex items-center gap-1">
       {keyParts.map((key, i) => (
-        <span key={i}>
+        <span key={i} className="flex items-center">
           <kbd className="rounded bg-muted px-2 py-1 font-mono text-sm">
             {key}
           </kbd>
-          {i < keyParts.length - 1 && <span className="mx-1 text-muted-foreground">then</span>}
+          {i < keyParts.length - 1 && (
+            <span className="mx-1 text-muted-foreground">
+              {hasModifier ? '+' : 'then'}
+            </span>
+          )}
         </span>
       ))}
     </span>

@@ -7,11 +7,15 @@ import { useStreamStatus } from '@/hooks/useTrades';
 import { useTheme } from '@/hooks/useTheme';
 import { useNotifications } from '@/hooks/useNotifications';
 
+// Detect if user is on Mac for shortcut display
+const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+const modKey = isMac ? '⌘' : 'Ctrl+';
+
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Accounts', href: '/accounts', icon: Users },
-  { name: 'Trades', href: '/trades', icon: TrendingUp },
-  { name: 'Logs', href: '/logs', icon: FileText },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, shortcut: `${modKey}1` },
+  { name: 'Accounts', href: '/accounts', icon: Users, shortcut: `${modKey}2` },
+  { name: 'Trades', href: '/trades', icon: TrendingUp, shortcut: `${modKey}3` },
+  { name: 'Logs', href: '/logs', icon: FileText, shortcut: `${modKey}4` },
 ];
 
 function StreamStatusIndicator() {
@@ -137,15 +141,20 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
               onClick={() => onOpenChange(false)}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )
               }
             >
-              <item.icon className="h-5 w-5" />
-              {item.name}
+              <span className="flex items-center gap-3">
+                <item.icon className="h-5 w-5" />
+                {item.name}
+              </span>
+              <kbd className="hidden rounded bg-muted/50 px-1.5 py-0.5 font-mono text-xs text-muted-foreground group-hover:inline-block">
+                {item.shortcut}
+              </kbd>
             </NavLink>
           ))}
         </nav>
