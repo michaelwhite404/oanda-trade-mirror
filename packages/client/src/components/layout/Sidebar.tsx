@@ -143,8 +143,8 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
                 cn(
                   'group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    ? 'bg-primary text-primary-foreground [&_kbd]:bg-primary-foreground/20 [&_kbd]:text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground [&_kbd]:bg-muted/50 [&_kbd]:text-muted-foreground'
                 )
               }
             >
@@ -152,7 +152,7 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
                 <item.icon className="h-5 w-5" />
                 {item.name}
               </span>
-              <kbd className="hidden rounded bg-muted/50 px-1.5 py-0.5 font-mono text-xs text-muted-foreground group-hover:inline-block">
+              <kbd className="hidden rounded px-1.5 py-0.5 font-mono text-xs group-hover:inline-block">
                 {item.shortcut}
               </kbd>
             </NavLink>
@@ -182,28 +182,38 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
           )}
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3"
+            className="group w-full justify-between"
             onClick={toggleTheme}
           >
-            {theme === 'dark' ? (
-              <>
-                <Sun className="h-5 w-5" />
-                Light Mode
-              </>
-            ) : (
-              <>
-                <Moon className="h-5 w-5" />
-                Dark Mode
-              </>
-            )}
+            <span className="flex items-center gap-3">
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="h-5 w-5" />
+                  Light Mode
+                </>
+              ) : (
+                <>
+                  <Moon className="h-5 w-5" />
+                  Dark Mode
+                </>
+              )}
+            </span>
+            <kbd className="hidden rounded bg-muted/50 px-1.5 py-0.5 font-mono text-xs text-muted-foreground group-hover:inline-block">
+              T
+            </kbd>
           </Button>
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3"
+            className="group w-full justify-between"
             onClick={() => window.dispatchEvent(new CustomEvent('show-shortcuts'))}
           >
-            <Keyboard className="h-5 w-5" />
-            Keyboard Shortcuts
+            <span className="flex items-center gap-3">
+              <Keyboard className="h-5 w-5" />
+              Keyboard Shortcuts
+            </span>
+            <kbd className="hidden rounded bg-muted/50 px-1.5 py-0.5 font-mono text-xs text-muted-foreground group-hover:inline-block">
+              ?
+            </kbd>
           </Button>
         </div>
       </div>
