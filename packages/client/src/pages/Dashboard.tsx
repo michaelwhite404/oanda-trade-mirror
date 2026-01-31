@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSourceAccounts, useMirrorAccounts } from '@/hooks/useAccounts';
 import { useTrades, useHealth, useLogs, useBalances } from '@/hooks/useTrades';
 import { useGlobalRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { OpenPositions } from '@/components/positions/OpenPositions';
 import { TradeStats } from '@/components/stats/TradeStats';
@@ -103,13 +104,23 @@ function BalanceCard({ account, type }: { account: AccountBalance; type: 'source
 }
 
 export default function Dashboard() {
-  const { data: sources = [], isLoading: sourcesLoading } = useSourceAccounts();
-  const { data: health } = useHealth();
-  const { data: logsData } = useLogs({ limit: 10 });
-  const { data: balancesData, isLoading: balancesLoading } = useBalances();
+  const { data: sources = [], isLoading: sourcesLoading, refetch: refetchSources } = useSourceAccounts();
+  const { data: health, refetch: refetchHealth } = useHealth();
+  const { data: logsData, refetch: refetchLogs } = useLogs({ limit: 10 });
+  const { data: balancesData, isLoading: balancesLoading, refetch: refetchBalances } = useBalances();
 
   // Enable real-time updates
   useGlobalRealTimeUpdates();
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onRefresh: () => {
+      refetchSources();
+      refetchHealth();
+      refetchLogs();
+      refetchBalances();
+    },
+  });
 
   const firstSourceId = sources[0]?._id;
   const { data: mirrors = [] } = useMirrorAccounts(firstSourceId || null);

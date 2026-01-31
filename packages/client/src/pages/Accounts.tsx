@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSourceAccounts, useCreateSourceAccount } from '@/hooks/useAccounts';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { SourceAccountCard } from '@/components/accounts/SourceAccountCard';
 import { AddAccountDialog, AccountFormData } from '@/components/accounts/AddAccountDialog';
 import { Plus } from 'lucide-react';
@@ -30,8 +31,14 @@ function AccountCardSkeleton() {
 
 export default function Accounts() {
   const [showAddSource, setShowAddSource] = useState(false);
-  const { data: sources = [], isLoading } = useSourceAccounts();
+  const { data: sources = [], isLoading, refetch } = useSourceAccounts();
   const createSourceMutation = useCreateSourceAccount();
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onRefresh: () => refetch(),
+    onNew: () => setShowAddSource(true),
+  });
 
   const handleAddSource = async (data: AccountFormData) => {
     await createSourceMutation.mutateAsync({

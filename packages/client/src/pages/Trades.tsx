@@ -11,6 +11,7 @@ import {
 import { useSourceAccounts } from '@/hooks/useAccounts';
 import { useTrades, usePlaceTrade } from '@/hooks/useTrades';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { TradeTable } from '@/components/trades/TradeTable';
 import { TradeFilters } from '@/components/trades/TradeFilters';
@@ -36,6 +37,12 @@ export default function Trades() {
 
   // Enable real-time updates for selected source
   useRealTimeUpdates(selectedSource);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onRefresh: () => refetch(),
+    onNew: () => selectedSource && setShowPlaceTrade(true),
+  });
 
   // Persist selected source to localStorage
   useEffect(() => {

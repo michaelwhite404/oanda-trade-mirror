@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useLogs } from '@/hooks/useTrades';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { RefreshCw } from 'lucide-react';
 
 function LogRowSkeleton() {
@@ -60,6 +61,11 @@ export default function Logs() {
     level: level === 'all' ? undefined : level,
     category: category === 'all' ? undefined : category,
     limit,
+  });
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onRefresh: () => refetch(),
   });
 
   const logs = data?.logs || [];
