@@ -103,3 +103,14 @@ export interface IExecutionLog {
   details: Record<string, unknown>;
   createdAt?: Date;
 }
+
+export interface IPushSubscription {
+  userId: Types.ObjectId;
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  createdAt?: Date;
+  updatedAt?: Date;
+}

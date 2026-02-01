@@ -3,6 +3,7 @@ import accountRoutes from './accountRoutes';
 import tradeRoutes from './tradeRoutes';
 import logRoutes from './logRoutes';
 import authRoutes from './authRoutes';
+import pushRoutes from './pushRoutes';
 import { streamManager } from '../streaming/streamManager';
 import { authenticate } from '../middleware/authMiddleware';
 
@@ -10,6 +11,9 @@ const router = Router();
 
 // Auth routes (public)
 router.use('/auth', authRoutes);
+
+// Push routes (public key endpoint is public, subscribe/unsubscribe are protected)
+router.use('/push', pushRoutes);
 
 // Protected routes
 router.use('/accounts', authenticate, accountRoutes);

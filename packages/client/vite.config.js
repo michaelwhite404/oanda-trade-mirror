@@ -7,7 +7,7 @@ export default defineConfig({
         react(),
         VitePWA({
             registerType: 'autoUpdate',
-            includeAssets: ['icon-192.svg', 'icon-512.svg', 'apple-touch-icon.svg'],
+            includeAssets: ['icon-192.svg', 'icon-512.svg', 'apple-touch-icon.svg', 'sw-push.js'],
             manifest: {
                 name: 'OANDA Trade Mirror',
                 short_name: 'Trade Mirror',
@@ -33,22 +33,9 @@ export default defineConfig({
                     },
                 ],
             },
-            workbox: {
-                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-                runtimeCaching: [
-                    {
-                        urlPattern: /^https:\/\/api\./i,
-                        handler: 'NetworkFirst',
-                        options: {
-                            cacheName: 'api-cache',
-                            expiration: {
-                                maxEntries: 50,
-                                maxAgeSeconds: 60 * 5, // 5 minutes
-                            },
-                        },
-                    },
-                ],
-            },
+            strategies: 'injectManifest',
+            srcDir: 'src',
+            filename: 'sw.ts',
         }),
     ],
     resolve: {

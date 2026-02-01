@@ -3,3 +3,4 @@ export { MirrorAccount, MirrorAccountDocument } from './models/MirrorAccount';
 export { TradeHistory, TradeHistoryDocument } from './models/TradeHistory';
 export { ExecutionLog, ExecutionLogDocument } from './models/ExecutionLog';
 export { User, UserDocument } from './models/User';
+export { PushSubscription, PushSubscriptionDocument } from './models/PushSubscription';

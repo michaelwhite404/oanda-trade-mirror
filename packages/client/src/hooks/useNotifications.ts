@@ -3,6 +3,79 @@ import { useWebSocketContext, WebSocketMessage } from '@/context/WebSocketContex
 
 type NotificationPermission = 'default' | 'granted' | 'denied';
 
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function subscribeToPush(): Promise<boolean> {
+  try {
+    // Get VAPID public key from server
+    const keyResponse = await fetch('/api/push/vapid-public-key', {
+      credentials: 'include',
+    });
+
+    if (!keyResponse.ok) return false;
+
+    const { publicKey } = await keyResponse.json();
+
+    // Get service worker registration
+    const registration = await navigator.serviceWorker.ready;
+
+    // Subscribe to push
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+    });
+
+    // Send subscription to server
+    const subscribeResponse = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        subscription: {
+          endpoint: subscription.endpoint,
+          keys: {
+            p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')!))),
+            auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')!))),
+          },
+        },
+      }),
+    });
+
+    return subscribeResponse.ok;
+  } catch (error) {
+    console.error('Failed to subscribe to push:', error);
+    return false;
+  }
+}
+
+async function unsubscribeFromPush(): Promise<void> {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      await subscription.unsubscribe();
+      await fetch('/api/push/unsubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ endpoint: subscription.endpoint }),
+      });
+    }
+  } catch (error) {
+    console.error('Failed to unsubscribe from push:', error);
+  }
+}
+
 export function useNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>(() => {
     if (typeof Notification === 'undefined') return 'denied';
@@ -34,25 +107,35 @@ export function useNotifications() {
         if (result === 'granted') {
           setEnabled(true);
           localStorage.setItem('notifications', 'true');
+          // Subscribe to push notifications
+          const pushSubscribed = await subscribeToPush();
           // Show test notification
           new Notification('Notifications Enabled', {
-            body: 'You will be notified when trades are mirrored',
-            icon: '/favicon.ico',
+            body: pushSubscribed
+              ? 'You will receive push notifications for trades'
+              : 'You will be notified when trades are mirrored',
+            icon: '/icon-192.svg',
           });
         }
       } else if (permission === 'granted') {
         setEnabled(true);
         localStorage.setItem('notifications', 'true');
+        // Subscribe to push notifications
+        const pushSubscribed = await subscribeToPush();
         // Show test notification
         new Notification('Notifications Enabled', {
-          body: 'You will be notified when trades are mirrored',
-          icon: '/favicon.ico',
+          body: pushSubscribed
+            ? 'You will receive push notifications for trades'
+            : 'You will be notified when trades are mirrored',
+          icon: '/icon-192.svg',
         });
       }
     } else {
       // Disabling
       setEnabled(false);
       localStorage.setItem('notifications', 'false');
+      // Unsubscribe from push
+      await unsubscribeFromPush();
     }
   }, [enabled, permission, requestPermission]);
 
@@ -61,7 +144,7 @@ export function useNotifications() {
 
     try {
       new Notification(title, {
-        icon: '/favicon.ico',
+        icon: '/icon-192.svg',
         ...options,
       });
     } catch (err) {
