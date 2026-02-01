@@ -9,6 +9,10 @@ dist/
 .env
 .env.local
 .env.*.local
+packages/*/.env
+packages/*/.env.local
+packages/*/.env.*.local
+!**/.env.example
 
 # Logs
 logs/
@@ -37,3 +41,6 @@ packages/client/.vite/
 
 # Claude Code
 .claude/
+
+# Docker volumes
+mongo_data/

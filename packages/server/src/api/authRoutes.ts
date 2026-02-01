@@ -14,7 +14,7 @@ const COOKIE_OPTIONS = {
 };
 
 // Frontend URL for redirects (dev server in development, same origin in production)
-const FRONTEND_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');
 
 // POST /api/auth/register - Create new user (first user or admin only)
 router.post('/register', async (req: Request, res: Response) => {

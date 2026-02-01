@@ -5,11 +5,15 @@ import path from 'path';
 import { createServer } from 'http';
 import { config } from './config/config';
 import { connectDatabase, disconnectDatabase } from './config/database';
+import { logEnvValidation } from './config/validateEnv';
 import { MirrorOrchestrator } from './core/mirrorOrchestrator';
 import { auditService } from './services/auditService';
 import { websocketServer } from './websocket/websocketServer';
 import { passport, configurePassport } from './config/passport';
 import apiRoutes from './api';
+
+// Validate environment variables at startup
+logEnvValidation();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,9 +23,10 @@ const httpServer = createServer(app);
 
 let orchestrator: MirrorOrchestrator | null = null;
 
-// Middleware
+// CORS configuration
+const corsOrigin = process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173');
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173',
+  origin: corsOrigin,
   credentials: true,
 }));
 app.use(cookieParser());

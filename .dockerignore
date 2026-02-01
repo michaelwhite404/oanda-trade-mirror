@@ -1,0 +1,46 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs (rebuilt in Docker)
+packages/server/dist
+packages/client/dist
+
+# Environment files (use Docker env vars instead)
+.env
+.env.*
+!.env.example
+packages/*/.env
+packages/*/.env.*
+!packages/*/.env.example
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs
+
+# Test files
+coverage
+*.test.ts
+*.spec.ts
+__tests__
+
+# Documentation
+*.md
+!README.md
+
+# Docker files (not needed in build context)
+docker-compose*.yml
