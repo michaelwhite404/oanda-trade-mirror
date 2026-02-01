@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -67,6 +68,9 @@ export function KeyboardShortcutsDialog() {
             <Keyboard className="h-5 w-5" />
             Keyboard Shortcuts
           </DialogTitle>
+          <DialogDescription>
+            Use these shortcuts to navigate and perform actions quickly.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-6">
           <ShortcutGroup category="Navigation" items={navigation} />

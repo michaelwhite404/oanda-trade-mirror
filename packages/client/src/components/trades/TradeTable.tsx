@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -256,9 +256,8 @@ export function TradeTable({ trades, isLoading, sourceId }: TradeTableProps) {
               const isExpanded = expandedTrade === trade._id;
 
               return (
-                <>
+                <React.Fragment key={trade._id}>
                   <TableRow
-                    key={trade._id}
                     className="cursor-pointer"
                     onClick={() => setExpandedTrade(isExpanded ? null : trade._id)}
                   >
@@ -289,7 +288,7 @@ export function TradeTable({ trades, isLoading, sourceId }: TradeTableProps) {
                     </TableCell>
                   </TableRow>
                   {isExpanded && (
-                    <TableRow key={`${trade._id}-details`}>
+                    <TableRow>
                       <TableCell colSpan={7} className="bg-muted/50">
                         <div className="p-4">
                           <h4 className="mb-2 font-medium">Mirror Executions</h4>
@@ -357,7 +356,7 @@ export function TradeTable({ trades, isLoading, sourceId }: TradeTableProps) {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </React.Fragment>
               );
             })}
           </TableBody>
