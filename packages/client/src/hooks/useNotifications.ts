@@ -114,7 +114,7 @@ export function useNotifications() {
             body: pushSubscribed
               ? 'You will receive push notifications for trades'
               : 'You will be notified when trades are mirrored',
-            icon: '/icon-192.svg',
+            icon: '/icon-192.png',
           });
         }
       } else if (permission === 'granted') {
@@ -127,7 +127,7 @@ export function useNotifications() {
           body: pushSubscribed
             ? 'You will receive push notifications for trades'
             : 'You will be notified when trades are mirrored',
-          icon: '/icon-192.svg',
+          icon: '/icon-192.png',
         });
       }
     } else {
@@ -144,7 +144,7 @@ export function useNotifications() {
 
     try {
       new Notification(title, {
-        icon: '/icon-192.svg',
+        icon: '/icon-192.png',
         ...options,
       });
     } catch (err) {
