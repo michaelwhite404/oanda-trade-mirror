@@ -31,3 +31,11 @@
 - [x] Dark mode toggle
 - [x] Keyboard shortcuts
 - [x] Remember last selected source account
+
+## Mobile
+- [x] PWA support (installable app, offline caching)
+- [x] Push notifications for trade alerts (works when app is closed)
+
+## Security
+- [x] JWT authentication with httpOnly cookies
+- [x] Google OAuth sign-in
