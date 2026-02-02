@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
+  UsersRound,
   TrendingUp,
   FileText,
   Menu,
@@ -34,6 +35,10 @@ const navigation = [
   { name: "Accounts", href: "/accounts", icon: Users, shortcut: `${modKey}2` },
   { name: "Trades", href: "/trades", icon: TrendingUp, shortcut: `${modKey}3` },
   { name: "Logs", href: "/logs", icon: FileText, shortcut: `${modKey}4` },
+];
+
+const adminNavigation = [
+  { name: "Users", href: "/users", icon: UsersRound, shortcut: `${modKey}5` },
 ];
 
 function StreamStatusIndicator() {
@@ -155,6 +160,29 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
         </div>
         <nav className="flex-1 space-y-1 p-4">
           {navigation.map((item) => (
+            <NavLink
+              key={item.name}
+              to={item.href}
+              onClick={() => onOpenChange(false)}
+              className={({ isActive }) =>
+                cn(
+                  "group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground [&_kbd]:bg-primary-foreground/20 [&_kbd]:text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground [&_kbd]:bg-muted/50 [&_kbd]:text-muted-foreground"
+                )
+              }
+            >
+              <span className="flex items-center gap-3">
+                <item.icon className="h-5 w-5" />
+                {item.name}
+              </span>
+              <kbd className="hidden rounded px-1.5 py-0.5 font-mono text-xs group-hover:inline-block">
+                {item.shortcut}
+              </kbd>
+            </NavLink>
+          ))}
+          {user?.role === 'admin' && adminNavigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}

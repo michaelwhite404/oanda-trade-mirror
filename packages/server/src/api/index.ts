@@ -4,8 +4,9 @@ import tradeRoutes from './tradeRoutes';
 import logRoutes from './logRoutes';
 import authRoutes from './authRoutes';
 import pushRoutes from './pushRoutes';
+import userRoutes from './userRoutes';
 import { streamManager } from '../streaming/streamManager';
-import { authenticate } from '../middleware/authMiddleware';
+import { authenticate, requireRole } from '../middleware/authMiddleware';
 
 const router = Router();
 
@@ -19,6 +20,9 @@ router.use('/push', pushRoutes);
 router.use('/accounts', authenticate, accountRoutes);
 router.use('/trades', authenticate, tradeRoutes);
 router.use('/logs', authenticate, logRoutes);
+
+// Admin-only routes
+router.use('/users', authenticate, requireRole('admin'), userRoutes);
 
 // Health check endpoint
 router.get('/health', (_req, res) => {

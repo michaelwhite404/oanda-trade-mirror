@@ -1,0 +1,249 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/hooks/useUsers';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useAuth } from '@/context/AuthContext';
+import { AddUserDialog, UserFormData } from '@/components/users/AddUserDialog';
+import { Plus, UserX } from 'lucide-react';
+import { UserAccount } from '@/api/client';
+
+function TableSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <Skeleton className="h-4 flex-1" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-8 w-24" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function Users() {
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [userToDeactivate, setUserToDeactivate] = useState<UserAccount | null>(null);
+  const { data: users = [], isLoading, refetch } = useUsers();
+  const createUserMutation = useCreateUser();
+  const updateUserMutation = useUpdateUser();
+  const deleteUserMutation = useDeleteUser();
+  const { user: currentUser } = useAuth();
+
+  useKeyboardShortcuts({
+    onRefresh: () => refetch(),
+    onNew: () => setShowAddUser(true),
+  });
+
+  const handleAddUser = async (data: UserFormData) => {
+    await createUserMutation.mutateAsync({
+      username: data.username,
+      email: data.email,
+      password: data.password,
+      role: data.role,
+    });
+    setShowAddUser(false);
+  };
+
+  const handleRoleChange = async (userId: string, role: 'admin' | 'viewer') => {
+    await updateUserMutation.mutateAsync({
+      id: userId,
+      data: { role },
+    });
+  };
+
+  const handleDeactivate = async () => {
+    if (userToDeactivate) {
+      await deleteUserMutation.mutateAsync(userToDeactivate._id);
+      setUserToDeactivate(null);
+    }
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Never';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold sm:text-3xl">Users</h1>
+        <Button onClick={() => setShowAddUser(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          <span className="hidden sm:inline">Add User</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <TableSkeleton />
+      ) : users.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <p className="text-muted-foreground">
+            No users found. Add a user to get started.
+          </p>
+          <Button className="mt-4" onClick={() => setShowAddUser(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add User
+          </Button>
+        </div>
+      ) : (
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Last Login</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user._id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      {user.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.username}
+                          className="h-8 w-8 rounded-full"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-medium">
+                          {user.username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium">@{user.username}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                      </div>
+                      {user.authProvider === 'google' && (
+                        <Badge variant="outline" className="text-xs">
+                          Google
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {currentUser?.id === user._id ? (
+                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                        {user.role}
+                      </Badge>
+                    ) : (
+                      <Select
+                        value={user.role}
+                        onValueChange={(value: 'admin' | 'viewer') =>
+                          handleRoleChange(user._id, value)
+                        }
+                        disabled={updateUserMutation.isPending}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="viewer">viewer</SelectItem>
+                          <SelectItem value="admin">admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={user.isActive ? 'default' : 'destructive'}>
+                      {user.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatDate(user.lastLoginAt)}
+                  </TableCell>
+                  <TableCell>
+                    {currentUser?.id !== user._id && user.isActive && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setUserToDeactivate(user)}
+                        disabled={deleteUserMutation.isPending}
+                      >
+                        <UserX className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <AddUserDialog
+        open={showAddUser}
+        onOpenChange={setShowAddUser}
+        onSubmit={handleAddUser}
+        isSubmitting={createUserMutation.isPending}
+      />
+
+      <AlertDialog
+        open={!!userToDeactivate}
+        onOpenChange={(open) => !open && setUserToDeactivate(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate{' '}
+              <strong>@{userToDeactivate?.username}</strong>? They will no longer
+              be able to log in. This action can be undone by reactivating the user.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeactivate}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

@@ -255,6 +255,41 @@ export const api = {
     const response = await doFetch();
     return handleResponse<StatsResponse>(response, doFetch);
   },
+
+  // Users (admin only)
+  async getUsers() {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/users`);
+    const response = await doFetch();
+    return handleResponse<UserAccount[]>(response, doFetch);
+  },
+
+  async createUser(data: CreateUserRequest) {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const response = await doFetch();
+    return handleResponse<UserAccount>(response, doFetch);
+  },
+
+  async updateUser(id: string, data: UpdateUserRequest) {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const response = await doFetch();
+    return handleResponse<UserAccount>(response, doFetch);
+  },
+
+  async deleteUser(id: string) {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/users/${id}`, {
+      method: 'DELETE',
+    });
+    const response = await doFetch();
+    return handleResponse<{ success: boolean }>(response, doFetch);
+  },
 };
 
 // Types
@@ -490,4 +525,30 @@ export interface StreamStatusResponse {
   overallStatus: 'connected' | 'degraded' | 'disconnected';
   streamCount: number;
   streams: StreamInfo[];
+}
+
+// User types
+export interface UserAccount {
+  _id: string;
+  username: string;
+  email: string;
+  role: 'admin' | 'viewer';
+  isActive: boolean;
+  lastLoginAt: string | null;
+  authProvider: 'local' | 'google';
+  avatarUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateUserRequest {
+  username: string;
+  email: string;
+  password: string;
+  role?: 'admin' | 'viewer';
+}
+
+export interface UpdateUserRequest {
+  role?: 'admin' | 'viewer';
+  isActive?: boolean;
 }
