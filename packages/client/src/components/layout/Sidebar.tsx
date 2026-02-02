@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -16,7 +16,7 @@ import {
   BellOff,
   Keyboard,
   LogOut,
-  Key,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,11 +36,10 @@ const navigation = [
   { name: "Accounts", href: "/accounts", icon: Users, shortcut: `${modKey}2` },
   { name: "Trades", href: "/trades", icon: TrendingUp, shortcut: `${modKey}3` },
   { name: "Logs", href: "/logs", icon: FileText, shortcut: `${modKey}4` },
-  { name: "API Keys", href: "/api-keys", icon: Key, shortcut: `${modKey}5` },
 ];
 
 const adminNavigation = [
-  { name: "Users", href: "/users", icon: UsersRound, shortcut: `${modKey}6` },
+  { name: "Users", href: "/users", icon: UsersRound, shortcut: `${modKey}5` },
 ];
 
 function StreamStatusIndicator() {
@@ -104,6 +103,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ open, onOpenChange }: SidebarProps) {
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const {
     enabled: notificationsEnabled,
@@ -264,7 +264,13 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
         </div>
         {user && (
           <div className="border-t p-4">
-            <div className="flex items-center gap-3 px-3 py-2">
+            <button
+              onClick={() => {
+                navigate('/account');
+                onOpenChange(false);
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-accent"
+            >
               {user.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
@@ -281,10 +287,11 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
                 <p className="truncate text-sm font-medium">@{user.username}</p>
                 <p className="truncate text-xs text-muted-foreground">{user.role}</p>
               </div>
-            </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+              className="mt-1 w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
               onClick={logout}
             >
               <LogOut className="h-5 w-5" />

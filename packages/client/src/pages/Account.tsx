@@ -3,6 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -35,15 +43,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useAuth } from '@/context/AuthContext';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
-import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { Plus, Trash2, Copy, Check, Key, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield } from 'lucide-react';
 import { ApiKeyInfo, ApiKeyWithSecret } from '@/api/client';
 
-function TableSkeleton() {
+function ApiKeysSkeleton() {
   return (
     <div className="space-y-3">
-      {[...Array(3)].map((_, i) => (
+      {[...Array(2)].map((_, i) => (
         <div key={i} className="flex items-center gap-4">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-4 flex-1" />
@@ -55,21 +63,17 @@ function TableSkeleton() {
   );
 }
 
-export default function ApiKeys() {
+export default function Account() {
+  const { user } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [createdKey, setCreatedKey] = useState<ApiKeyWithSecret | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKeyInfo | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { data: apiKeys = [], isLoading, refetch } = useApiKeys();
+  const { data: apiKeys = [], isLoading: isLoadingKeys } = useApiKeys();
   const createMutation = useCreateApiKey();
   const deleteMutation = useDeleteApiKey();
-
-  useKeyboardShortcuts({
-    onRefresh: () => refetch(),
-    onNew: () => setShowCreateDialog(true),
-  });
 
   const handleCreate = async () => {
     if (!newKeyName.trim()) return;
@@ -114,92 +118,142 @@ export default function ApiKeys() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">API Keys</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create API keys to access the platform programmatically
-          </p>
-        </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Key
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <TableSkeleton />
-      ) : activeKeys.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <Key className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <p className="mt-4 text-muted-foreground">
-            No API keys yet. Create one to get started.
-          </p>
-          <Button className="mt-4" onClick={() => setShowCreateDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create API Key
-          </Button>
-        </div>
-      ) : (
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Key</TableHead>
-                <TableHead>Last Used</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {activeKeys.map((apiKey) => (
-                <TableRow key={apiKey._id}>
-                  <TableCell className="font-medium">{apiKey.name}</TableCell>
-                  <TableCell>
-                    <code className="rounded bg-muted px-2 py-1 text-sm">
-                      {apiKey.keyPrefix}...
-                    </code>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(apiKey.lastUsedAt)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(apiKey.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setKeyToRevoke(apiKey)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Revoke key</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      <div className="rounded-lg border bg-card p-4">
-        <h3 className="font-medium">Usage</h3>
+      <div>
+        <h1 className="text-2xl font-bold sm:text-3xl">Account</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Include your API key in the Authorization header:
+          Manage your profile and API access
         </p>
-        <pre className="mt-2 overflow-x-auto rounded bg-muted p-3 text-sm">
-          <code>Authorization: Bearer otm_your_api_key_here</code>
-        </pre>
       </div>
+
+      {/* Profile Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+          <CardDescription>Your account information</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user.username}
+                className="h-16 w-16 rounded-full"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted text-xl font-medium">
+                {user?.username.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="space-y-1">
+              <p className="text-lg font-medium">@{user?.username}</p>
+              <Badge variant="secondary">{user?.role}</Badge>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex items-center gap-2 text-sm">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Username:</span>
+              <span>{user?.username}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Email:</span>
+              <span>{user?.email || 'Not set'}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Role:</span>
+              <span className="capitalize">{user?.role}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* API Keys Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>API Keys</CardTitle>
+            <CardDescription>Create API keys to access the platform programmatically</CardDescription>
+          </div>
+          <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Key
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoadingKeys ? (
+            <ApiKeysSkeleton />
+          ) : activeKeys.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <Key className="mx-auto h-10 w-10 text-muted-foreground/50" />
+              <p className="mt-3 text-sm text-muted-foreground">
+                No API keys yet. Create one to get started.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Key</TableHead>
+                    <TableHead>Last Used</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="w-[60px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activeKeys.map((apiKey) => (
+                    <TableRow key={apiKey._id}>
+                      <TableCell className="font-medium">{apiKey.name}</TableCell>
+                      <TableCell>
+                        <code className="rounded bg-muted px-2 py-1 text-sm">
+                          {apiKey.keyPrefix}...
+                        </code>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(apiKey.lastUsedAt)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(apiKey.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setKeyToRevoke(apiKey)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Revoke key</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          <div className="mt-4 rounded-lg bg-muted/50 p-3">
+            <p className="text-sm font-medium">Usage</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Include your API key in the Authorization header:
+            </p>
+            <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-xs">
+              <code>Authorization: Bearer otm_your_api_key_here</code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Create Key Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
