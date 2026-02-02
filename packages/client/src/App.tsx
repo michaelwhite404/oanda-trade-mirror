@@ -14,6 +14,7 @@ import Logs from '@/pages/Logs';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Users from '@/pages/Users';
+import ApiKeys from '@/pages/ApiKeys';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -54,6 +55,7 @@ function ProtectedLayout() {
                   </AdminRoute>
                 }
               />
+              <Route path="/api-keys" element={<ApiKeys />} />
             </Routes>
           </div>
         </main>

@@ -318,6 +318,44 @@ export const api = {
     });
     return handleResponse<{ user: { id: string; username: string; email: string; role: string } }>(response);
   },
+
+  // API Keys
+  async getApiKeys() {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/api-keys`);
+    const response = await doFetch();
+    return handleResponse<ApiKeyInfo[]>(response, doFetch);
+  },
+
+  async createApiKey(data: CreateApiKeyRequest) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/api-keys`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    const response = await doFetch();
+    return handleResponse<ApiKeyWithSecret>(response, doFetch);
+  },
+
+  async updateApiKey(id: string, data: { name: string }) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/api-keys/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    const response = await doFetch();
+    return handleResponse<ApiKeyInfo>(response, doFetch);
+  },
+
+  async deleteApiKey(id: string) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/api-keys/${id}`, {
+        method: "DELETE",
+      });
+    const response = await doFetch();
+    return handleResponse<{ success: boolean }>(response, doFetch);
+  },
 };
 
 // Types
@@ -589,4 +627,24 @@ export interface CompleteRegistrationRequest {
   token: string;
   username: string;
   password: string;
+}
+
+// API Key types
+export interface ApiKeyInfo {
+  _id: string;
+  name: string;
+  keyPrefix: string;
+  isActive: boolean;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface ApiKeyWithSecret extends ApiKeyInfo {
+  key: string; // Only returned on creation
+}
+
+export interface CreateApiKeyRequest {
+  name: string;
+  expiresInDays?: number;
 }

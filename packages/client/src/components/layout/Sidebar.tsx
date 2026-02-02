@@ -16,6 +16,7 @@ import {
   BellOff,
   Keyboard,
   LogOut,
+  Key,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,10 +36,11 @@ const navigation = [
   { name: "Accounts", href: "/accounts", icon: Users, shortcut: `${modKey}2` },
   { name: "Trades", href: "/trades", icon: TrendingUp, shortcut: `${modKey}3` },
   { name: "Logs", href: "/logs", icon: FileText, shortcut: `${modKey}4` },
+  { name: "API Keys", href: "/api-keys", icon: Key, shortcut: `${modKey}5` },
 ];
 
 const adminNavigation = [
-  { name: "Users", href: "/users", icon: UsersRound, shortcut: `${modKey}5` },
+  { name: "Users", href: "/users", icon: UsersRound, shortcut: `${modKey}6` },
 ];
 
 function StreamStatusIndicator() {
