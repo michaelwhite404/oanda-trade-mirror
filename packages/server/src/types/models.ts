@@ -76,13 +76,17 @@ export type LogCategory = 'trade' | 'account' | 'system' | 'api';
 
 export type UserRole = 'admin' | 'viewer';
 export type AuthProvider = 'local' | 'google';
+export type RegistrationStatus = 'pending' | 'active';
 
 export interface IUser {
-  username: string;
+  username: string | null;
   email: string;
   passwordHash: string | null;
   role: UserRole;
   isActive: boolean;
+  registrationStatus: RegistrationStatus;
+  inviteToken: string | null;
+  inviteExpiresAt: Date | null;
   lastLoginAt: Date | null;
   refreshTokenHash: string | null;
   authProvider: AuthProvider;

@@ -263,32 +263,60 @@ export const api = {
     return handleResponse<UserAccount[]>(response, doFetch);
   },
 
-  async createUser(data: CreateUserRequest) {
-    const doFetch = () => fetchWithCredentials(`${BASE_URL}/users`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+  async inviteUser(data: InviteUserRequest) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
     const response = await doFetch();
     return handleResponse<UserAccount>(response, doFetch);
   },
 
+  async resendInvite(id: string) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/users/${id}/resend-invite`, {
+        method: "POST",
+      });
+    const response = await doFetch();
+    return handleResponse<{ success: boolean }>(response, doFetch);
+  },
+
   async updateUser(id: string, data: UpdateUserRequest) {
-    const doFetch = () => fetchWithCredentials(`${BASE_URL}/users/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/users/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
     const response = await doFetch();
     return handleResponse<UserAccount>(response, doFetch);
   },
 
   async deleteUser(id: string) {
-    const doFetch = () => fetchWithCredentials(`${BASE_URL}/users/${id}`, {
-      method: 'DELETE',
-    });
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/users/${id}`, {
+        method: "DELETE",
+      });
     const response = await doFetch();
     return handleResponse<{ success: boolean }>(response, doFetch);
+  },
+
+  // Auth - public endpoints for registration
+  async verifyInvite(token: string) {
+    const response = await fetch(`${BASE_URL}/auth/verify-invite/${token}`);
+    return handleResponse<VerifyInviteResponse>(response);
+  },
+
+  async completeRegistration(data: CompleteRegistrationRequest) {
+    const response = await fetch(`${BASE_URL}/auth/complete-registration`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+    return handleResponse<{ user: { id: string; username: string; email: string; role: string } }>(response);
   },
 };
 
@@ -530,25 +558,35 @@ export interface StreamStatusResponse {
 // User types
 export interface UserAccount {
   _id: string;
-  username: string;
+  username: string | null;
   email: string;
-  role: 'admin' | 'viewer';
+  role: "admin" | "viewer";
   isActive: boolean;
+  registrationStatus: "pending" | "active";
   lastLoginAt: string | null;
-  authProvider: 'local' | 'google';
+  authProvider: "local" | "google";
   avatarUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CreateUserRequest {
-  username: string;
+export interface InviteUserRequest {
   email: string;
-  password: string;
-  role?: 'admin' | 'viewer';
+  role?: "admin" | "viewer";
 }
 
 export interface UpdateUserRequest {
-  role?: 'admin' | 'viewer';
+  role?: "admin" | "viewer";
   isActive?: boolean;
+}
+
+export interface VerifyInviteResponse {
+  email: string;
+  role: string;
+}
+
+export interface CompleteRegistrationRequest {
+  token: string;
+  username: string;
+  password: string;
 }

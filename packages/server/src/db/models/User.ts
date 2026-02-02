@@ -7,8 +7,9 @@ const UserSchema = new Schema<UserDocument>(
   {
     username: {
       type: String,
-      required: true,
+      default: null,
       unique: true,
+      sparse: true,
       index: true,
       minlength: 3,
       maxlength: 50,
@@ -33,6 +34,20 @@ const UserSchema = new Schema<UserDocument>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    registrationStatus: {
+      type: String,
+      enum: ['pending', 'active'],
+      default: 'pending',
+    },
+    inviteToken: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    inviteExpiresAt: {
+      type: Date,
+      default: null,
     },
     lastLoginAt: {
       type: Date,

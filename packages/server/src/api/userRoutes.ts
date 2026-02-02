@@ -1,10 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { Types } from 'mongoose';
-import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { User } from '../db/models/User';
 import { UserRole } from '../types/models';
+import { emailService } from '../services/emailService';
 
-const SALT_ROUNDS = 12;
+const INVITE_EXPIRY_DAYS = 7;
+
+function generateInviteToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
 
 const router = Router();
 
@@ -18,6 +23,7 @@ router.get('/', async (_req: Request, res: Response) => {
       email: user.email,
       role: user.role,
       isActive: user.isActive,
+      registrationStatus: user.registrationStatus,
       lastLoginAt: user.lastLoginAt,
       authProvider: user.authProvider,
       avatarUrl: user.avatarUrl,
@@ -30,59 +36,111 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-// POST /api/users - Create new user (admin only)
+// POST /api/users - Invite new user (admin only)
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { email, role } = req.body;
 
-    if (!username || !email || !password) {
-      res.status(400).json({ error: 'Username, email, and password are required' });
+    if (!email) {
+      res.status(400).json({ error: 'Email is required' });
       return;
     }
 
-    if (password.length < 8) {
-      res.status(400).json({ error: 'Password must be at least 8 characters' });
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: 'Invalid email format' });
       return;
     }
 
-    // Check if username or email already exists
-    const existingUser = await User.findOne({
-      $or: [{ username }, { email: email.toLowerCase() }],
-    });
+    // Check if email already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
 
     if (existingUser) {
-      if (existingUser.username === username) {
-        res.status(400).json({ error: 'Username already exists' });
-      } else {
-        res.status(400).json({ error: 'Email already exists' });
-      }
+      res.status(400).json({ error: 'A user with this email already exists' });
       return;
     }
 
-    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    // Generate invite token
+    const inviteToken = generateInviteToken();
+    const inviteExpiresAt = new Date();
+    inviteExpiresAt.setDate(inviteExpiresAt.getDate() + INVITE_EXPIRY_DAYS);
 
     const user = new User({
-      username,
       email: email.toLowerCase(),
-      passwordHash,
       role: (role as UserRole) || 'viewer',
       authProvider: 'local',
       isActive: true,
+      registrationStatus: 'pending',
+      inviteToken,
+      inviteExpiresAt,
     });
 
     await user.save();
 
+    // Send invite email
+    const invitedBy = req.authUser?.username;
+    await emailService.sendInvite({
+      email: user.email,
+      inviteToken,
+      role: user.role,
+      invitedBy,
+    });
+
     res.status(201).json({
       _id: user._id,
-      username: user.username,
       email: user.email,
       role: user.role,
       isActive: user.isActive,
-      authProvider: user.authProvider,
+      registrationStatus: user.registrationStatus,
       createdAt: user.createdAt,
     });
   } catch (error) {
     res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+// POST /api/users/:id/resend-invite - Resend invite email (admin only)
+router.post('/:id/resend-invite', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!Types.ObjectId.isValid(id)) {
+      res.status(400).json({ error: 'Invalid user ID' });
+      return;
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    if (user.registrationStatus !== 'pending') {
+      res.status(400).json({ error: 'User has already completed registration' });
+      return;
+    }
+
+    // Generate new invite token
+    const inviteToken = generateInviteToken();
+    const inviteExpiresAt = new Date();
+    inviteExpiresAt.setDate(inviteExpiresAt.getDate() + INVITE_EXPIRY_DAYS);
+
+    user.inviteToken = inviteToken;
+    user.inviteExpiresAt = inviteExpiresAt;
+    await user.save();
+
+    // Send invite email
+    const invitedBy = req.authUser?.username;
+    await emailService.sendInvite({
+      email: user.email,
+      inviteToken,
+      role: user.role,
+      invitedBy,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
   }
 });
 
@@ -141,6 +199,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
       email: user.email,
       role: user.role,
       isActive: user.isActive,
+      registrationStatus: user.registrationStatus,
       lastLoginAt: user.lastLoginAt,
       authProvider: user.authProvider,
       avatarUrl: user.avatarUrl,
@@ -170,7 +229,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     const user = await User.findByIdAndUpdate(
       id,
-      { $set: { isActive: false, refreshTokenHash: null } },
+      { $set: { isActive: false, refreshTokenHash: null, inviteToken: null } },
       { new: true }
     );
 

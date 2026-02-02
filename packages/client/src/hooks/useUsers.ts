@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api, CreateUserRequest, UpdateUserRequest } from '@/api/client';
+import { api, InviteUserRequest, UpdateUserRequest } from '@/api/client';
 
 export function useUsers() {
   return useQuery({
@@ -9,19 +9,38 @@ export function useUsers() {
   });
 }
 
-export function useCreateUser() {
+export function useInviteUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateUserRequest) => api.createUser(data),
+    mutationFn: (data: InviteUserRequest) => api.inviteUser(data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User created', {
-        description: `${data.username} has been added`,
+      toast.success('Invite sent', {
+        description: `Invitation email sent to ${data.email}`,
       });
     },
     onError: (error: Error) => {
-      toast.error('Failed to create user', {
+      toast.error('Failed to send invite', {
+        description: error.message,
+      });
+    },
+  });
+}
+
+export function useResendInvite() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.resendInvite(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Invite resent', {
+        description: 'A new invitation email has been sent',
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to resend invite', {
         description: error.message,
       });
     },
@@ -34,11 +53,9 @@ export function useUpdateUser() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateUserRequest }) =>
       api.updateUser(id, data),
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User updated', {
-        description: `${data.username}'s settings have been updated`,
-      });
+      toast.success('User updated');
     },
     onError: (error: Error) => {
       toast.error('Failed to update user', {

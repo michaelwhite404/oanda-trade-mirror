@@ -12,6 +12,7 @@ import Accounts from '@/pages/Accounts';
 import Trades from '@/pages/Trades';
 import Logs from '@/pages/Logs';
 import Login from '@/pages/Login';
+import Register from '@/pages/Register';
 import Users from '@/pages/Users';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -69,6 +70,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register/:token" element={<Register />} />
             <Route path="/*" element={<ProtectedLayout />} />
           </Routes>
           <Toaster position="bottom-right" richColors />

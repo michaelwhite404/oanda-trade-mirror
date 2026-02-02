@@ -17,18 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Mail } from 'lucide-react';
 
 interface AddUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: UserFormData) => void;
+  onSubmit: (data: InviteFormData) => void;
   isSubmitting: boolean;
 }
 
-export interface UserFormData {
-  username: string;
+export interface InviteFormData {
   email: string;
-  password: string;
   role: 'admin' | 'viewer';
 }
 
@@ -38,29 +37,15 @@ export function AddUserDialog({
   onSubmit,
   isSubmitting,
 }: AddUserDialogProps) {
-  const [formData, setFormData] = useState<UserFormData>({
-    username: '',
+  const [formData, setFormData] = useState<InviteFormData>({
     email: '',
-    password: '',
     role: 'viewer',
   });
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const validateForm = (): string | null => {
-    if (formData.username.length < 3) {
-      return 'Username must be at least 3 characters';
-    }
-    if (formData.username.length > 50) {
-      return 'Username must be less than 50 characters';
-    }
-    if (!/^[a-zA-Z0-9_-]+$/.test(formData.username)) {
-      return 'Username can only contain letters, numbers, underscores, and hyphens';
-    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       return 'Please enter a valid email address';
-    }
-    if (formData.password.length < 8) {
-      return 'Password must be at least 8 characters';
     }
     return null;
   };
@@ -81,9 +66,7 @@ export function AddUserDialog({
   const handleClose = (isOpen: boolean) => {
     if (!isOpen) {
       setFormData({
-        username: '',
         email: '',
-        password: '',
         role: 'viewer',
       });
       setValidationError(null);
@@ -95,32 +78,15 @@ export function AddUserDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add User</DialogTitle>
+          <DialogTitle>Invite User</DialogTitle>
           <DialogDescription>
-            Create a new user account. They will be able to log in with the credentials you provide.
+            Send an invitation email. The user will set their own username and password when they accept.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              value={formData.username}
-              onChange={(e) =>
-                setFormData({ ...formData, username: e.target.value })
-              }
-              placeholder="johndoe"
-              required
-              autoComplete="off"
-            />
-            <p className="text-xs text-muted-foreground">
-              3-50 characters, letters, numbers, underscores, hyphens only
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email Address</Label>
             <Input
               id="email"
               type="email"
@@ -128,28 +94,10 @@ export function AddUserDialog({
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
-              placeholder="john@example.com"
+              placeholder="user@example.com"
               required
               autoComplete="off"
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-              placeholder="Enter a secure password"
-              required
-              autoComplete="new-password"
-            />
-            <p className="text-xs text-muted-foreground">
-              Minimum 8 characters
-            </p>
           </div>
 
           <div className="space-y-2">
@@ -186,7 +134,8 @@ export function AddUserDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create User'}
+              <Mail className="mr-2 h-4 w-4" />
+              {isSubmitting ? 'Sending...' : 'Send Invite'}
             </Button>
           </DialogFooter>
         </form>

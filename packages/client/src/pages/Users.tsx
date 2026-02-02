@@ -27,11 +27,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/hooks/useUsers';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useUsers, useInviteUser, useResendInvite, useUpdateUser, useDeleteUser } from '@/hooks/useUsers';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useAuth } from '@/context/AuthContext';
-import { AddUserDialog, UserFormData } from '@/components/users/AddUserDialog';
-import { Plus, UserX } from 'lucide-react';
+import { AddUserDialog, InviteFormData } from '@/components/users/AddUserDialog';
+import { Plus, UserX, Mail, Clock } from 'lucide-react';
 import { UserAccount } from '@/api/client';
 
 function TableSkeleton() {
@@ -54,7 +60,8 @@ export default function Users() {
   const [showAddUser, setShowAddUser] = useState(false);
   const [userToDeactivate, setUserToDeactivate] = useState<UserAccount | null>(null);
   const { data: users = [], isLoading, refetch } = useUsers();
-  const createUserMutation = useCreateUser();
+  const inviteUserMutation = useInviteUser();
+  const resendInviteMutation = useResendInvite();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
   const { user: currentUser } = useAuth();
@@ -64,14 +71,16 @@ export default function Users() {
     onNew: () => setShowAddUser(true),
   });
 
-  const handleAddUser = async (data: UserFormData) => {
-    await createUserMutation.mutateAsync({
-      username: data.username,
+  const handleInviteUser = async (data: InviteFormData) => {
+    await inviteUserMutation.mutateAsync({
       email: data.email,
-      password: data.password,
       role: data.role,
     });
     setShowAddUser(false);
+  };
+
+  const handleResendInvite = async (userId: string) => {
+    await resendInviteMutation.mutateAsync(userId);
   };
 
   const handleRoleChange = async (userId: string, role: 'admin' | 'viewer') => {
@@ -105,8 +114,8 @@ export default function Users() {
         <h1 className="text-2xl font-bold sm:text-3xl">Users</h1>
         <Button onClick={() => setShowAddUser(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          <span className="hidden sm:inline">Add User</span>
-          <span className="sm:hidden">Add</span>
+          <span className="hidden sm:inline">Invite User</span>
+          <span className="sm:hidden">Invite</span>
         </Button>
       </div>
 
@@ -115,11 +124,11 @@ export default function Users() {
       ) : users.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">
-            No users found. Add a user to get started.
+            No users found. Invite someone to get started.
           </p>
           <Button className="mt-4" onClick={() => setShowAddUser(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Add User
+            Invite User
           </Button>
         </div>
       ) : (
@@ -131,7 +140,7 @@ export default function Users() {
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Login</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -142,17 +151,23 @@ export default function Users() {
                       {user.avatarUrl ? (
                         <img
                           src={user.avatarUrl}
-                          alt={user.username}
+                          alt={user.username || user.email}
                           className="h-8 w-8 rounded-full"
                           referrerPolicy="no-referrer"
                         />
                       ) : (
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-medium">
-                          {user.username.charAt(0).toUpperCase()}
+                          {(user.username || user.email).charAt(0).toUpperCase()}
                         </div>
                       )}
                       <div>
-                        <p className="font-medium">@{user.username}</p>
+                        {user.username ? (
+                          <p className="font-medium">@{user.username}</p>
+                        ) : (
+                          <p className="font-medium text-muted-foreground italic">
+                            Pending
+                          </p>
+                        )}
                         <p className="text-sm text-muted-foreground">{user.email}</p>
                       </div>
                       {user.authProvider === 'google' && (
@@ -186,25 +201,62 @@ export default function Users() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.isActive ? 'default' : 'destructive'}>
-                      {user.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
+                    {user.registrationStatus === 'pending' ? (
+                      <Badge variant="outline" className="gap-1">
+                        <Clock className="h-3 w-3" />
+                        Pending
+                      </Badge>
+                    ) : !user.isActive ? (
+                      <Badge variant="destructive">Inactive</Badge>
+                    ) : (
+                      <Badge variant="default">Active</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(user.lastLoginAt)}
+                    {user.registrationStatus === 'pending' ? (
+                      <span className="italic">Not registered</span>
+                    ) : (
+                      formatDate(user.lastLoginAt)
+                    )}
                   </TableCell>
                   <TableCell>
-                    {currentUser?.id !== user._id && user.isActive && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setUserToDeactivate(user)}
-                        disabled={deleteUserMutation.isPending}
-                      >
-                        <UserX className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {user.registrationStatus === 'pending' && user.isActive && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleResendInvite(user._id)}
+                                disabled={resendInviteMutation.isPending}
+                              >
+                                <Mail className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Resend invite</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {currentUser?.id !== user._id && user.isActive && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setUserToDeactivate(user)}
+                                disabled={deleteUserMutation.isPending}
+                              >
+                                <UserX className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Deactivate user</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -216,8 +268,8 @@ export default function Users() {
       <AddUserDialog
         open={showAddUser}
         onOpenChange={setShowAddUser}
-        onSubmit={handleAddUser}
-        isSubmitting={createUserMutation.isPending}
+        onSubmit={handleInviteUser}
+        isSubmitting={inviteUserMutation.isPending}
       />
 
       <AlertDialog
@@ -229,8 +281,8 @@ export default function Users() {
             <AlertDialogTitle>Deactivate User</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to deactivate{' '}
-              <strong>@{userToDeactivate?.username}</strong>? They will no longer
-              be able to log in. This action can be undone by reactivating the user.
+              <strong>{userToDeactivate?.username ? `@${userToDeactivate.username}` : userToDeactivate?.email}</strong>?
+              They will no longer be able to log in. This action can be undone by reactivating the user.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

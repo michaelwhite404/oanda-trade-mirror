@@ -237,7 +237,7 @@ class AuthService {
   private async generateTokens(user: UserDocument): Promise<AuthTokens> {
     const payload: TokenPayload = {
       userId: user._id.toString(),
-      username: user.username,
+      username: user.username || user.email, // Fallback to email if username not set
       role: user.role,
     };
 
@@ -255,7 +255,7 @@ class AuthService {
   private toUserResponse(user: UserDocument): UserResponse {
     return {
       id: user._id.toString(),
-      username: user.username,
+      username: user.username || user.email, // Fallback to email if username not set
       email: user.email,
       role: user.role,
       lastLoginAt: user.lastLoginAt,

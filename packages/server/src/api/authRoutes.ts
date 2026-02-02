@@ -1,8 +1,11 @@
 import { Router, Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import { passport } from '../config/passport';
 import { authService, OAuthProfile } from '../services/authService';
 import { authenticate } from '../middleware/authMiddleware';
 import { User } from '../db';
+
+const SALT_ROUNDS = 12;
 
 const router = Router();
 
@@ -15,6 +18,119 @@ const COOKIE_OPTIONS = {
 
 // Frontend URL for redirects (dev server in development, same origin in production)
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');
+
+// GET /api/auth/verify-invite/:token - Verify invite token
+router.get('/verify-invite/:token', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+
+    const user = await User.findOne({
+      inviteToken: token,
+      registrationStatus: 'pending',
+      isActive: true,
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'Invalid or expired invite link' });
+      return;
+    }
+
+    if (user.inviteExpiresAt && user.inviteExpiresAt < new Date()) {
+      res.status(410).json({ error: 'Invite link has expired. Please request a new invite.' });
+      return;
+    }
+
+    res.json({
+      email: user.email,
+      role: user.role,
+    });
+  } catch (error) {
+    console.error('[Auth] Verify invite error:', error);
+    res.status(500).json({ error: 'Failed to verify invite' });
+  }
+});
+
+// POST /api/auth/complete-registration - Complete registration with username and password
+router.post('/complete-registration', async (req: Request, res: Response) => {
+  try {
+    const { token, username, password } = req.body;
+
+    if (!token || !username || !password) {
+      res.status(400).json({ error: 'Token, username, and password are required' });
+      return;
+    }
+
+    // Validate username
+    if (username.length < 3 || username.length > 50) {
+      res.status(400).json({ error: 'Username must be between 3 and 50 characters' });
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      res.status(400).json({ error: 'Username can only contain letters, numbers, underscores, and hyphens' });
+      return;
+    }
+
+    // Validate password
+    const passwordValidation = await authService.validatePassword(password);
+    if (!passwordValidation.valid) {
+      res.status(400).json({ error: passwordValidation.message });
+      return;
+    }
+
+    // Find user by invite token
+    const user = await User.findOne({
+      inviteToken: token,
+      registrationStatus: 'pending',
+      isActive: true,
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'Invalid or expired invite link' });
+      return;
+    }
+
+    if (user.inviteExpiresAt && user.inviteExpiresAt < new Date()) {
+      res.status(410).json({ error: 'Invite link has expired. Please request a new invite.' });
+      return;
+    }
+
+    // Check if username already exists
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      res.status(409).json({ error: 'Username already taken' });
+      return;
+    }
+
+    // Update user with username and password
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    user.username = username;
+    user.passwordHash = passwordHash;
+    user.registrationStatus = 'active';
+    user.inviteToken = null;
+    user.inviteExpiresAt = null;
+    await user.save();
+
+    // Auto-login the user
+    const { user: userResponse, tokens } = await authService.login(username, password);
+
+    // Set cookies
+    res.cookie('accessToken', tokens.accessToken, {
+      ...COOKIE_OPTIONS,
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      ...COOKIE_OPTIONS,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ user: userResponse });
+  } catch (error) {
+    console.error('[Auth] Complete registration error:', error);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
 
 // POST /api/auth/register - Create new user (first user or admin only)
 router.post('/register', async (req: Request, res: Response) => {
