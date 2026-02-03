@@ -298,6 +298,64 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
   }
 });
 
+// PATCH /api/auth/profile - Update current user's profile
+router.patch('/profile', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.authUser!.userId;
+    const { username } = req.body;
+
+    if (!username) {
+      res.status(400).json({ error: 'Username is required' });
+      return;
+    }
+
+    // Validate username
+    if (username.length < 3 || username.length > 50) {
+      res.status(400).json({ error: 'Username must be between 3 and 50 characters' });
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      res.status(400).json({ error: 'Username can only contain letters, numbers, underscores, and hyphens' });
+      return;
+    }
+
+    // Check if username already exists (excluding current user)
+    const existingUser = await User.findOne({ username, _id: { $ne: userId } });
+    if (existingUser) {
+      res.status(409).json({ error: 'Username is already taken' });
+      return;
+    }
+
+    // Update user
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { username },
+      { new: true }
+    );
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    res.json({
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        lastLoginAt: user.lastLoginAt,
+        avatarUrl: user.avatarUrl,
+        authProvider: user.authProvider,
+      },
+    });
+  } catch (error) {
+    console.error('[Auth] Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
 // GET /api/auth/google - Initiate Google OAuth
 router.get('/google', passport.authenticate('google', { session: false }));
 

@@ -319,6 +319,17 @@ export const api = {
     return handleResponse<{ user: { id: string; username: string; email: string; role: string } }>(response);
   },
 
+  async updateProfile(data: { username: string }) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/auth/profile`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    const response = await doFetch();
+    return handleResponse<{ user: { id: string; username: string; email: string; role: string; lastLoginAt: string | null; avatarUrl: string | null; authProvider: string } }>(response, doFetch);
+  },
+
   // API Keys
   async getApiKeys() {
     const doFetch = () => fetchWithCredentials(`${BASE_URL}/api-keys`);

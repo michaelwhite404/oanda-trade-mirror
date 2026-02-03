@@ -45,8 +45,10 @@ import {
 } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/AuthContext';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
-import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield } from 'lucide-react';
-import { ApiKeyInfo, ApiKeyWithSecret } from '@/api/client';
+import { useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield, Pencil } from 'lucide-react';
+import { api, ApiKeyInfo, ApiKeyWithSecret } from '@/api/client';
 
 function ApiKeysSkeleton() {
   return (
@@ -64,9 +66,11 @@ function ApiKeysSkeleton() {
 }
 
 export default function Account() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditUsernameDialog, setShowEditUsernameDialog] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
+  const [newUsername, setNewUsername] = useState('');
   const [createdKey, setCreatedKey] = useState<ApiKeyWithSecret | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKeyInfo | null>(null);
   const [copied, setCopied] = useState(false);
@@ -74,6 +78,30 @@ export default function Account() {
   const { data: apiKeys = [], isLoading: isLoadingKeys } = useApiKeys();
   const createMutation = useCreateApiKey();
   const deleteMutation = useDeleteApiKey();
+
+  const updateUsernameMutation = useMutation({
+    mutationFn: (username: string) => api.updateProfile({ username }),
+    onSuccess: (data) => {
+      updateUser({ username: data.user.username });
+      toast.success('Username updated');
+      setShowEditUsernameDialog(false);
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to update username', {
+        description: error.message,
+      });
+    },
+  });
+
+  const handleEditUsername = () => {
+    setNewUsername(user?.username || '');
+    setShowEditUsernameDialog(true);
+  };
+
+  const handleSaveUsername = () => {
+    if (!newUsername.trim() || newUsername === user?.username) return;
+    updateUsernameMutation.mutate(newUsername.trim());
+  };
 
   const handleCreate = async () => {
     if (!newKeyName.trim()) return;
@@ -155,6 +183,14 @@ export default function Account() {
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="text-muted-foreground">Username:</span>
               <span>{user?.username}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                onClick={handleEditUsername}
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Mail className="h-4 w-4 text-muted-foreground" />
@@ -350,6 +386,44 @@ export default function Account() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Username Dialog */}
+      <Dialog open={showEditUsernameDialog} onOpenChange={setShowEditUsernameDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Username</DialogTitle>
+            <DialogDescription>
+              Choose a new username. It must be unique and can only contain letters, numbers, underscores, and hyphens.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder="Enter new username"
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                3-50 characters. Letters, numbers, underscores, and hyphens only.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditUsernameDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveUsername}
+              disabled={!newUsername.trim() || newUsername === user?.username || updateUsernameMutation.isPending}
+            >
+              {updateUsernameMutation.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
