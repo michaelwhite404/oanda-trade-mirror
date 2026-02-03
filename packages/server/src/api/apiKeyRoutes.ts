@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
-import { ApiKey } from '../db/models/ApiKey';
+import { ApiKey, API_KEY_SCOPES, ApiKeyScope } from '../db/models/ApiKey';
 
 const router = Router();
 const SALT_ROUNDS = 12;
@@ -24,6 +24,7 @@ router.get('/', async (req: Request, res: Response) => {
       _id: key._id,
       name: key.name,
       keyPrefix: key.keyPrefix,
+      scopes: key.scopes,
       isActive: key.isActive,
       lastUsedAt: key.lastUsedAt,
       expiresAt: key.expiresAt,
@@ -40,7 +41,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const userId = req.authUser!.userId;
-    const { name, expiresInDays } = req.body;
+    const { name, expiresInDays, scopes } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       res.status(400).json({ error: 'Name is required' });
@@ -50,6 +51,20 @@ router.post('/', async (req: Request, res: Response) => {
     if (name.length > 100) {
       res.status(400).json({ error: 'Name must be 100 characters or less' });
       return;
+    }
+
+    // Validate scopes if provided
+    let validatedScopes: ApiKeyScope[] = ['full']; // Default to full access
+    if (scopes && Array.isArray(scopes)) {
+      const invalidScopes = scopes.filter((s: string) => !API_KEY_SCOPES.includes(s as ApiKeyScope));
+      if (invalidScopes.length > 0) {
+        res.status(400).json({
+          error: `Invalid scopes: ${invalidScopes.join(', ')}`,
+          validScopes: API_KEY_SCOPES,
+        });
+        return;
+      }
+      validatedScopes = scopes as ApiKeyScope[];
     }
 
     // Check key limit per user (max 10)
@@ -76,6 +91,7 @@ router.post('/', async (req: Request, res: Response) => {
       name: name.trim(),
       keyHash,
       keyPrefix,
+      scopes: validatedScopes,
       isActive: true,
       expiresAt,
     });
@@ -88,6 +104,7 @@ router.post('/', async (req: Request, res: Response) => {
       name: apiKey.name,
       key: plainKey, // Only returned on creation!
       keyPrefix: apiKey.keyPrefix,
+      scopes: apiKey.scopes,
       isActive: apiKey.isActive,
       expiresAt: apiKey.expiresAt,
       createdAt: apiKey.createdAt,
@@ -157,6 +174,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
       _id: apiKey._id,
       name: apiKey.name,
       keyPrefix: apiKey.keyPrefix,
+      scopes: apiKey.scopes,
       isActive: apiKey.isActive,
       lastUsedAt: apiKey.lastUsedAt,
       expiresAt: apiKey.expiresAt,
@@ -165,6 +183,21 @@ router.patch('/:id', async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
+});
+
+// GET /api/api-keys/scopes - Get available scopes
+router.get('/scopes', (_req: Request, res: Response) => {
+  res.json({
+    scopes: API_KEY_SCOPES,
+    descriptions: {
+      'read:accounts': 'View source and mirror accounts, balances, and positions',
+      'write:accounts': 'Create, modify, and delete source and mirror accounts',
+      'read:trades': 'View trade history and sync status',
+      'write:trades': 'Place trades and retry failed mirror executions',
+      'read:logs': 'View execution logs',
+      'full': 'Full access to all endpoints',
+    },
+  });
 });
 
 export default router;

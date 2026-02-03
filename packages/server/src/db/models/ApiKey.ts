@@ -1,10 +1,23 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
+// Available API key scopes
+export const API_KEY_SCOPES = [
+  'read:accounts',
+  'write:accounts',
+  'read:trades',
+  'write:trades',
+  'read:logs',
+  'full',
+] as const;
+
+export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
+
 export interface IApiKey {
   userId: Types.ObjectId;
   name: string;
   keyHash: string;
   keyPrefix: string; // First 8 chars for display
+  scopes: ApiKeyScope[];
   isActive: boolean;
   lastUsedAt: Date | null;
   expiresAt: Date | null;
@@ -35,6 +48,11 @@ const ApiKeySchema = new Schema<ApiKeyDocument>(
     keyPrefix: {
       type: String,
       required: true,
+    },
+    scopes: {
+      type: [String],
+      enum: API_KEY_SCOPES,
+      default: ['full'],
     },
     isActive: {
       type: Boolean,

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import { authService, TokenPayload } from '../services/authService';
 import { UserRole } from '../types/models';
-import { ApiKey } from '../db/models/ApiKey';
+import { ApiKey, ApiKeyScope } from '../db/models/ApiKey';
 import { User } from '../db/models/User';
 
 declare global {
@@ -10,11 +10,17 @@ declare global {
     interface Request {
       authUser?: TokenPayload;
       authMethod?: 'cookie' | 'apiKey';
+      apiKeyScopes?: ApiKeyScope[];
     }
   }
 }
 
-async function authenticateWithApiKey(apiKey: string): Promise<TokenPayload | null> {
+interface ApiKeyAuthResult {
+  payload: TokenPayload;
+  scopes: ApiKeyScope[];
+}
+
+async function authenticateWithApiKey(apiKey: string): Promise<ApiKeyAuthResult | null> {
   // Find all active API keys and check against hash
   // We need to check the prefix first to narrow down candidates
   const keyPrefix = apiKey.substring(0, 12);
@@ -44,9 +50,12 @@ async function authenticateWithApiKey(apiKey: string): Promise<TokenPayload | nu
       }
 
       return {
-        userId: user._id.toString(),
-        username: user.username || user.email,
-        role: user.role,
+        payload: {
+          userId: user._id.toString(),
+          username: user.username || user.email,
+          role: user.role,
+        },
+        scopes: candidate.scopes,
       };
     }
   }
@@ -63,10 +72,11 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
     // Check if it looks like an API key (starts with otm_)
     if (apiKey.startsWith('otm_')) {
       authenticateWithApiKey(apiKey)
-        .then((payload) => {
-          if (payload) {
-            req.authUser = payload;
+        .then((result) => {
+          if (result) {
+            req.authUser = result.payload;
             req.authMethod = 'apiKey';
+            req.apiKeyScopes = result.scopes;
             next();
           } else {
             res.status(401).json({ error: 'Invalid or expired API key' });
@@ -91,6 +101,8 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
     const payload = authService.verifyAccessToken(token);
     req.authUser = payload;
     req.authMethod = 'cookie';
+    // Cookie auth has full access (no scope restrictions)
+    req.apiKeyScopes = ['full'];
     next();
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
@@ -106,6 +118,41 @@ export function requireRole(...roles: UserRole[]) {
 
     if (!roles.includes(req.authUser.role)) {
       res.status(403).json({ error: 'Insufficient permissions' });
+      return;
+    }
+
+    next();
+  };
+}
+
+/**
+ * Middleware to require specific API key scopes.
+ * If the user authenticated via cookie, they have full access.
+ * If the user authenticated via API key, they must have one of the required scopes or 'full'.
+ */
+export function requireScope(...scopes: ApiKeyScope[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.authUser) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    const userScopes = req.apiKeyScopes || [];
+
+    // 'full' scope grants access to everything
+    if (userScopes.includes('full')) {
+      next();
+      return;
+    }
+
+    // Check if user has at least one of the required scopes
+    const hasScope = scopes.some((scope) => userScopes.includes(scope));
+    if (!hasScope) {
+      res.status(403).json({
+        error: 'Insufficient scope',
+        required: scopes,
+        current: userScopes,
+      });
       return;
     }
 

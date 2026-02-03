@@ -686,10 +686,37 @@ export interface CompleteRegistrationRequest {
 }
 
 // API Key types
+export type ApiKeyScope =
+  | 'read:accounts'
+  | 'write:accounts'
+  | 'read:trades'
+  | 'write:trades'
+  | 'read:logs'
+  | 'full';
+
+export const API_KEY_SCOPES: ApiKeyScope[] = [
+  'read:accounts',
+  'write:accounts',
+  'read:trades',
+  'write:trades',
+  'read:logs',
+  'full',
+];
+
+export const SCOPE_DESCRIPTIONS: Record<ApiKeyScope, string> = {
+  'read:accounts': 'View accounts, balances, and positions',
+  'write:accounts': 'Create, modify, and delete accounts',
+  'read:trades': 'View trade history and sync status',
+  'write:trades': 'Place trades and retry failed executions',
+  'read:logs': 'View execution logs',
+  'full': 'Full access to all endpoints',
+};
+
 export interface ApiKeyInfo {
   _id: string;
   name: string;
   keyPrefix: string;
+  scopes: ApiKeyScope[];
   isActive: boolean;
   lastUsedAt: string | null;
   expiresAt: string | null;
@@ -703,4 +730,5 @@ export interface ApiKeyWithSecret extends ApiKeyInfo {
 export interface CreateApiKeyRequest {
   name: string;
   expiresInDays?: number;
+  scopes?: ApiKeyScope[];
 }

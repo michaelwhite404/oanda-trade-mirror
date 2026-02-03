@@ -4,11 +4,12 @@ import { accountService } from '../services/accountService';
 import { OandaEnvironment } from '../types/oanda';
 import { getAccountSummary, getOpenPositions, getTransactionHistory, getTransactionDetails } from '../oanda/oandaApi';
 import { TradeHistory } from '../db';
+import { requireScope } from '../middleware/authMiddleware';
 
 const router = Router();
 
 // GET /api/accounts/sources - List all active source accounts
-router.get('/sources', async (_req: Request, res: Response) => {
+router.get('/sources', requireScope('read:accounts'), async (_req: Request, res: Response) => {
   try {
     const sources = await accountService.getActiveSourceAccounts();
     // Don't expose API tokens in response
@@ -30,7 +31,7 @@ router.get('/sources', async (_req: Request, res: Response) => {
 });
 
 // POST /api/accounts/sources - Create a new source account
-router.post('/sources', async (req: Request, res: Response) => {
+router.post('/sources', requireScope('write:accounts'), async (req: Request, res: Response) => {
   try {
     const { oandaAccountId, apiToken, environment, alias } = req.body;
 
@@ -60,7 +61,7 @@ router.post('/sources', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/accounts/sources/:id - Deactivate a source account
-router.delete('/sources/:id', async (req: Request, res: Response) => {
+router.delete('/sources/:id', requireScope('write:accounts'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!Types.ObjectId.isValid(id)) {
@@ -76,7 +77,7 @@ router.delete('/sources/:id', async (req: Request, res: Response) => {
 });
 
 // GET /api/accounts/sources/:id/mirrors - List mirrors for a source account
-router.get('/sources/:id/mirrors', async (req: Request, res: Response) => {
+router.get('/sources/:id/mirrors', requireScope('read:accounts'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!Types.ObjectId.isValid(id)) {
@@ -110,7 +111,7 @@ router.get('/sources/:id/mirrors', async (req: Request, res: Response) => {
 });
 
 // POST /api/accounts/sources/:id/mirrors - Create a mirror account for a source
-router.post('/sources/:id/mirrors', async (req: Request, res: Response) => {
+router.post('/sources/:id/mirrors', requireScope('write:accounts'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!Types.ObjectId.isValid(id)) {
@@ -152,7 +153,7 @@ router.post('/sources/:id/mirrors', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/accounts/mirrors/:id - Deactivate a mirror account
-router.delete('/mirrors/:id', async (req: Request, res: Response) => {
+router.delete('/mirrors/:id', requireScope('write:accounts'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!Types.ObjectId.isValid(id)) {
@@ -168,7 +169,7 @@ router.delete('/mirrors/:id', async (req: Request, res: Response) => {
 });
 
 // PATCH /api/accounts/sources/:id - Update a source account (alias)
-router.patch('/sources/:id', async (req: Request, res: Response) => {
+router.patch('/sources/:id', requireScope('write:accounts'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!Types.ObjectId.isValid(id)) {
@@ -191,7 +192,7 @@ router.patch('/sources/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/accounts/mirrors/:id/toggle - Pause/resume a mirror account
-router.post('/mirrors/:id/toggle', async (req: Request, res: Response) => {
+router.post('/mirrors/:id/toggle', requireScope('write:accounts'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!Types.ObjectId.isValid(id)) {
@@ -207,7 +208,7 @@ router.post('/mirrors/:id/toggle', async (req: Request, res: Response) => {
 });
 
 // POST /api/accounts/sources/:id/mirrors/pause-all - Pause all mirrors for a source
-router.post('/sources/:id/mirrors/pause-all', async (req: Request, res: Response) => {
+router.post('/sources/:id/mirrors/pause-all', requireScope('write:accounts'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!Types.ObjectId.isValid(id)) {
@@ -223,7 +224,7 @@ router.post('/sources/:id/mirrors/pause-all', async (req: Request, res: Response
 });
 
 // POST /api/accounts/sources/:id/mirrors/resume-all - Resume all mirrors for a source
-router.post('/sources/:id/mirrors/resume-all', async (req: Request, res: Response) => {
+router.post('/sources/:id/mirrors/resume-all', requireScope('write:accounts'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!Types.ObjectId.isValid(id)) {
@@ -239,7 +240,7 @@ router.post('/sources/:id/mirrors/resume-all', async (req: Request, res: Respons
 });
 
 // PATCH /api/accounts/mirrors/:id - Update a mirror account (scaling mode, scale factor, alias)
-router.patch('/mirrors/:id', async (req: Request, res: Response) => {
+router.patch('/mirrors/:id', requireScope('write:accounts'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!Types.ObjectId.isValid(id)) {
@@ -269,7 +270,7 @@ router.patch('/mirrors/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/accounts/validate - Validate OANDA credentials
-router.post('/validate', async (req: Request, res: Response) => {
+router.post('/validate', requireScope('read:accounts'), async (req: Request, res: Response) => {
   try {
     const { oandaAccountId, apiToken, environment } = req.body;
 
@@ -291,7 +292,7 @@ router.post('/validate', async (req: Request, res: Response) => {
 });
 
 // GET /api/accounts/balances - Get balances for all active accounts
-router.get('/balances', async (_req: Request, res: Response) => {
+router.get('/balances', requireScope('read:accounts'), async (_req: Request, res: Response) => {
   try {
     const sources = await accountService.getActiveSourceAccounts();
 
@@ -379,7 +380,7 @@ router.get('/balances', async (_req: Request, res: Response) => {
 });
 
 // GET /api/accounts/positions - Get open positions for all active accounts
-router.get('/positions', async (_req: Request, res: Response) => {
+router.get('/positions', requireScope('read:accounts'), async (_req: Request, res: Response) => {
   try {
     const sources = await accountService.getActiveSourceAccounts();
 
@@ -502,7 +503,7 @@ router.get('/positions', async (_req: Request, res: Response) => {
 });
 
 // GET /api/accounts/stats - Get P&L summary and trade statistics
-router.get('/stats', async (_req: Request, res: Response) => {
+router.get('/stats', requireScope('read:accounts'), async (_req: Request, res: Response) => {
   try {
     const sources = await accountService.getActiveSourceAccounts();
 

@@ -41,7 +41,7 @@
 - [x] Google OAuth sign-in
 - [x] API key authentication for programmatic access
 - [ ] Active sessions list (show where logged in, allow revoking)
-- [ ] API key scopes/permissions (read-only, specific endpoints)
+- [x] API key scopes/permissions (read-only, specific endpoints)
 
 ## User Account
 - [x] Invite-based registration flow

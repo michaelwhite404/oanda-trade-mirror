@@ -55,7 +55,8 @@ import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield, Pencil, Lock, Clock } from 'lucide-react';
-import { api, ApiKeyInfo, ApiKeyWithSecret } from '@/api/client';
+import { api, ApiKeyInfo, ApiKeyWithSecret, ApiKeyScope, API_KEY_SCOPES, SCOPE_DESCRIPTIONS } from '@/api/client';
+import { Checkbox } from '@/components/ui/checkbox';
 
 function ApiKeysSkeleton() {
   return (
@@ -79,6 +80,7 @@ export default function Account() {
   const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [keyExpiration, setKeyExpiration] = useState<string>('never');
+  const [keyScopes, setKeyScopes] = useState<ApiKeyScope[]>(['full']);
   const [newUsername, setNewUsername] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -172,14 +174,42 @@ export default function Account() {
       const result = await createMutation.mutateAsync({
         name: newKeyName.trim(),
         expiresInDays,
+        scopes: keyScopes,
       });
       setCreatedKey(result);
       setNewKeyName('');
       setKeyExpiration('never');
+      setKeyScopes(['full']);
       setShowCreateDialog(false);
     } catch {
       // Error handled in hook
     }
+  };
+
+  const toggleScope = (scope: ApiKeyScope) => {
+    if (scope === 'full') {
+      // If selecting full, clear other scopes
+      setKeyScopes(['full']);
+    } else {
+      // If selecting a specific scope, remove 'full' and toggle the scope
+      setKeyScopes((prev) => {
+        const withoutFull = prev.filter((s) => s !== 'full');
+        if (withoutFull.includes(scope)) {
+          const newScopes = withoutFull.filter((s) => s !== scope);
+          // If no scopes left, default to full
+          return newScopes.length === 0 ? ['full'] : newScopes;
+        } else {
+          return [...withoutFull, scope];
+        }
+      });
+    }
+  };
+
+  const formatScopes = (scopes: ApiKeyScope[]) => {
+    if (scopes.includes('full')) return 'Full access';
+    if (scopes.length === 0) return 'No access';
+    if (scopes.length === 1) return SCOPE_DESCRIPTIONS[scopes[0]];
+    return `${scopes.length} permissions`;
   };
 
   const handleCopy = async () => {
@@ -347,9 +377,9 @@ export default function Account() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Key</TableHead>
+                    <TableHead>Permissions</TableHead>
                     <TableHead>Expires</TableHead>
                     <TableHead>Last Used</TableHead>
-                    <TableHead>Created</TableHead>
                     <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -365,6 +395,26 @@ export default function Account() {
                           </code>
                         </TableCell>
                         <TableCell>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Badge variant="secondary">
+                                  {formatScopes(apiKey.scopes || ['full'])}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <ul className="text-xs space-y-1">
+                                  {(apiKey.scopes || ['full']).map((scope) => (
+                                    <li key={scope}>
+                                      <span className="font-medium">{scope}</span>: {SCOPE_DESCRIPTIONS[scope]}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
+                        <TableCell>
                           <Badge variant={expStatus.variant}>
                             {expStatus.variant === 'destructive' && (
                               <Clock className="mr-1 h-3 w-3" />
@@ -374,9 +424,6 @@ export default function Account() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {formatDate(apiKey.lastUsedAt)}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(apiKey.createdAt)}
                         </TableCell>
                         <TableCell>
                           <TooltipProvider>
@@ -421,13 +468,14 @@ export default function Account() {
         if (!open) {
           setNewKeyName('');
           setKeyExpiration('never');
+          setKeyScopes(['full']);
         }
       }}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Create API Key</DialogTitle>
             <DialogDescription>
-              Give your API key a name to help you remember what it's used for.
+              Configure your API key's name, expiration, and permissions.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -456,8 +504,33 @@ export default function Account() {
                   <SelectItem value="365">1 year</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Permissions</Label>
+              <div className="rounded-md border p-3 space-y-3">
+                {API_KEY_SCOPES.map((scope) => (
+                  <div key={scope} className="flex items-start space-x-3">
+                    <Checkbox
+                      id={`scope-${scope}`}
+                      checked={keyScopes.includes(scope)}
+                      onCheckedChange={() => toggleScope(scope)}
+                    />
+                    <div className="grid gap-0.5 leading-none">
+                      <label
+                        htmlFor={`scope-${scope}`}
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        {scope === 'full' ? 'Full Access' : scope}
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        {SCOPE_DESCRIPTIONS[scope]}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
               <p className="text-xs text-muted-foreground">
-                For security, consider setting an expiration for production keys.
+                For security, grant only the permissions your application needs.
               </p>
             </div>
           </div>
@@ -504,6 +577,16 @@ export default function Account() {
                       })
                     : 'Never'}
                 </p>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Permissions</Label>
+              <div className="flex flex-wrap gap-1">
+                {(createdKey?.scopes || ['full']).map((scope) => (
+                  <Badge key={scope} variant="secondary" className="text-xs">
+                    {scope === 'full' ? 'Full Access' : scope}
+                  </Badge>
+                ))}
               </div>
             </div>
             <div className="space-y-2">

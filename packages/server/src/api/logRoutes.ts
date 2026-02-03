@@ -2,11 +2,12 @@ import { Router, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import { ExecutionLog } from '../db';
 import { LogLevel, LogCategory } from '../types/models';
+import { requireScope } from '../middleware/authMiddleware';
 
 const router = Router();
 
 // GET /api/logs - Get execution logs with optional filters
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireScope('read:logs'), async (req: Request, res: Response) => {
   try {
     const {
       level,

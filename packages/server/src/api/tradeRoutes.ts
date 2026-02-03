@@ -6,11 +6,12 @@ import { placeMarketOrder } from '../oanda/oandaApi';
 import { retryMirrorExecution } from '../core/tradeDispatcher';
 import { TradeInstruction } from '../types/models';
 import { auditService } from '../services/auditService';
+import { requireScope } from '../middleware/authMiddleware';
 
 const router = Router();
 
 // GET /api/trades/:sourceId - Get recent trades for a source account
-router.get('/:sourceId', async (req: Request, res: Response) => {
+router.get('/:sourceId', requireScope('read:trades'), async (req: Request, res: Response) => {
   try {
     const { sourceId } = req.params;
     if (!Types.ObjectId.isValid(sourceId)) {
@@ -49,7 +50,7 @@ router.get('/:sourceId', async (req: Request, res: Response) => {
 });
 
 // GET /api/trades/:sourceId/sync-status - Get sync status for mirrors
-router.get('/:sourceId/sync-status', async (req: Request, res: Response) => {
+router.get('/:sourceId/sync-status', requireScope('read:trades'), async (req: Request, res: Response) => {
   try {
     const { sourceId } = req.params;
     if (!Types.ObjectId.isValid(sourceId)) {
@@ -68,7 +69,7 @@ router.get('/:sourceId/sync-status', async (req: Request, res: Response) => {
 });
 
 // POST /api/trades/:tradeId/retry/:mirrorAccountId - Retry a failed mirror execution
-router.post('/:tradeId/retry/:mirrorAccountId', async (req: Request, res: Response) => {
+router.post('/:tradeId/retry/:mirrorAccountId', requireScope('write:trades'), async (req: Request, res: Response) => {
   try {
     const { tradeId, mirrorAccountId } = req.params;
 
@@ -104,7 +105,7 @@ router.post('/:tradeId/retry/:mirrorAccountId', async (req: Request, res: Respon
 });
 
 // GET /api/trades/:sourceId/export - Export trade history as CSV
-router.get('/:sourceId/export', async (req: Request, res: Response) => {
+router.get('/:sourceId/export', requireScope('read:trades'), async (req: Request, res: Response) => {
   try {
     const { sourceId } = req.params;
     if (!Types.ObjectId.isValid(sourceId)) {
@@ -214,7 +215,7 @@ router.get('/:sourceId/export', async (req: Request, res: Response) => {
 });
 
 // GET /api/trades/:sourceId/:txnId - Get a single trade by transaction ID
-router.get('/:sourceId/:txnId', async (req: Request, res: Response) => {
+router.get('/:sourceId/:txnId', requireScope('read:trades'), async (req: Request, res: Response) => {
   try {
     const { sourceId, txnId } = req.params;
     if (!Types.ObjectId.isValid(sourceId)) {
@@ -239,7 +240,7 @@ router.get('/:sourceId/:txnId', async (req: Request, res: Response) => {
 });
 
 // POST /api/trades/:sourceId - Place a manual trade on a source account
-router.post('/:sourceId', async (req: Request, res: Response) => {
+router.post('/:sourceId', requireScope('write:trades'), async (req: Request, res: Response) => {
   try {
     const { sourceId } = req.params;
     if (!Types.ObjectId.isValid(sourceId)) {
