@@ -92,6 +92,8 @@ export interface IUser {
   authProvider: AuthProvider;
   googleId: string | null;
   avatarUrl: string | null;
+  resetPasswordToken: string | null;
+  resetPasswordExpiresAt: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -46,8 +46,8 @@
 ## User Account
 - [x] Invite-based registration flow
 - [x] Update username from Account page
-- [ ] Change password
-- [ ] Forgot password / reset flow
+- [x] Change password
+- [x] Forgot password / reset flow
 - [ ] API key expiration option in UI
 
 ## Admin Features

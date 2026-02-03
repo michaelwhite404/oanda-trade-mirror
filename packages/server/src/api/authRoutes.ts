@@ -1,9 +1,11 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { passport } from '../config/passport';
 import { authService, OAuthProfile } from '../services/authService';
 import { authenticate } from '../middleware/authMiddleware';
 import { User } from '../db';
+import { emailService } from '../services/emailService';
 
 const SALT_ROUNDS = 12;
 
@@ -443,6 +445,132 @@ router.post('/change-password', authenticate, async (req: Request, res: Response
   } catch (error) {
     console.error('[Auth] Change password error:', error);
     res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// POST /api/auth/forgot-password - Request password reset
+router.post('/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ error: 'Email is required' });
+      return;
+    }
+
+    // Find user by email
+    const user = await User.findOne({
+      email: email.toLowerCase(),
+      isActive: true,
+      registrationStatus: 'active',
+    });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      console.log(`[Auth] Password reset requested for unknown email: ${email}`);
+      res.json({ success: true });
+      return;
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetPasswordExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Save token to user
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpiresAt = resetPasswordExpiresAt;
+    await user.save();
+
+    // Send email
+    await emailService.sendPasswordReset({
+      email: user.email,
+      resetToken,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Auth] Forgot password error:', error);
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
+// GET /api/auth/verify-reset/:token - Verify reset token is valid
+router.get('/verify-reset/:token', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      isActive: true,
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'Invalid or expired reset link' });
+      return;
+    }
+
+    if (user.resetPasswordExpiresAt && user.resetPasswordExpiresAt < new Date()) {
+      res.status(410).json({ error: 'Reset link has expired. Please request a new one.' });
+      return;
+    }
+
+    res.json({ valid: true, email: user.email });
+  } catch (error) {
+    console.error('[Auth] Verify reset token error:', error);
+    res.status(500).json({ error: 'Failed to verify reset token' });
+  }
+});
+
+// POST /api/auth/reset-password - Reset password with token
+router.post('/reset-password', async (req: Request, res: Response) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      res.status(400).json({ error: 'Token and password are required' });
+      return;
+    }
+
+    // Validate password
+    const passwordValidation = await authService.validatePassword(password);
+    if (!passwordValidation.valid) {
+      res.status(400).json({ error: passwordValidation.message });
+      return;
+    }
+
+    // Find user by reset token
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      isActive: true,
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'Invalid or expired reset link' });
+      return;
+    }
+
+    if (user.resetPasswordExpiresAt && user.resetPasswordExpiresAt < new Date()) {
+      res.status(410).json({ error: 'Reset link has expired. Please request a new one.' });
+      return;
+    }
+
+    // Hash and save new password
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    user.passwordHash = passwordHash;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpiresAt = null;
+
+    // If user was using Google only, set authProvider to local since they now have a password
+    if (user.authProvider === 'google') {
+      user.authProvider = 'local';
+    }
+
+    await user.save();
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Auth] Reset password error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 

@@ -72,6 +72,15 @@ const UserSchema = new Schema<UserDocument>(
       type: String,
       default: null,
     },
+    resetPasswordToken: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    resetPasswordExpiresAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

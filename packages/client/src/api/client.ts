@@ -352,6 +352,29 @@ export const api = {
     return handleResponse<{ success: boolean; hasPassword: boolean }>(response, doFetch);
   },
 
+  async forgotPassword(email: string) {
+    const response = await fetch(`${BASE_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    return handleResponse<{ success: boolean }>(response);
+  },
+
+  async verifyResetToken(token: string) {
+    const response = await fetch(`${BASE_URL}/auth/verify-reset/${token}`);
+    return handleResponse<{ valid: boolean; email: string }>(response);
+  },
+
+  async resetPassword(data: { token: string; password: string }) {
+    const response = await fetch(`${BASE_URL}/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return handleResponse<{ success: boolean }>(response);
+  },
+
   // API Keys
   async getApiKeys() {
     const doFetch = () => fetchWithCredentials(`${BASE_URL}/api-keys`);

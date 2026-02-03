@@ -13,6 +13,8 @@ import Trades from '@/pages/Trades';
 import Logs from '@/pages/Logs';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 import Users from '@/pages/Users';
 import Account from '@/pages/Account';
 
@@ -72,6 +74,8 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/register/:token" element={<Register />} />
             <Route path="/*" element={<ProtectedLayout />} />
           </Routes>
