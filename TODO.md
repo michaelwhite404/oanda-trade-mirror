@@ -39,6 +39,22 @@
 ## Security
 - [x] JWT authentication with httpOnly cookies
 - [x] Google OAuth sign-in
+- [x] API key authentication for programmatic access
+- [ ] Active sessions list (show where logged in, allow revoking)
+- [ ] API key scopes/permissions (read-only, specific endpoints)
+
+## User Account
+- [x] Invite-based registration flow
+- [x] Update username from Account page
+- [ ] Change password
+- [ ] Forgot password / reset flow
+- [ ] API key expiration option in UI
+
+## Admin Features
+- [x] User management page (invite, deactivate, change role)
+- [x] Reactivate users with auto-resend invite
+- [ ] User search/filter
+- [ ] Audit log (track who invited/deactivated users)
 
 ## CI/CD & DevOps
 - [x] Docker containerization
