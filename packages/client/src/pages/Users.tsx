@@ -144,7 +144,7 @@ export default function Users() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
+              {users.filter((u) => u.isActive).map((user) => (
                 <TableRow key={user._id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -206,8 +206,6 @@ export default function Users() {
                         <Clock className="h-3 w-3" />
                         Pending
                       </Badge>
-                    ) : !user.isActive ? (
-                      <Badge variant="destructive">Inactive</Badge>
                     ) : (
                       <Badge variant="default">Active</Badge>
                     )}
@@ -221,7 +219,7 @@ export default function Users() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {user.registrationStatus === 'pending' && user.isActive && (
+                      {user.registrationStatus === 'pending' && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
