@@ -43,11 +43,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/context/AuthContext';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield, Pencil, Lock } from 'lucide-react';
+import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield, Pencil, Lock, Clock } from 'lucide-react';
 import { api, ApiKeyInfo, ApiKeyWithSecret } from '@/api/client';
 
 function ApiKeysSkeleton() {
@@ -71,6 +78,7 @@ export default function Account() {
   const [showEditUsernameDialog, setShowEditUsernameDialog] = useState(false);
   const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
+  const [keyExpiration, setKeyExpiration] = useState<string>('never');
   const [newUsername, setNewUsername] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -160,9 +168,14 @@ export default function Account() {
     if (!newKeyName.trim()) return;
 
     try {
-      const result = await createMutation.mutateAsync({ name: newKeyName.trim() });
+      const expiresInDays = keyExpiration === 'never' ? undefined : parseInt(keyExpiration);
+      const result = await createMutation.mutateAsync({
+        name: newKeyName.trim(),
+        expiresInDays,
+      });
       setCreatedKey(result);
       setNewKeyName('');
+      setKeyExpiration('never');
       setShowCreateDialog(false);
     } catch {
       // Error handled in hook
@@ -193,6 +206,26 @@ export default function Account() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const getExpirationStatus = (expiresAt: string | null) => {
+    if (!expiresAt) return { label: 'Never', variant: 'secondary' as const };
+    const expDate = new Date(expiresAt);
+    const now = new Date();
+    const daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysUntilExpiry < 0) {
+      return { label: 'Expired', variant: 'destructive' as const };
+    } else if (daysUntilExpiry <= 7) {
+      return { label: `${daysUntilExpiry}d left`, variant: 'destructive' as const };
+    } else if (daysUntilExpiry <= 30) {
+      return { label: `${daysUntilExpiry}d left`, variant: 'outline' as const };
+    } else {
+      return {
+        label: expDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        variant: 'secondary' as const,
+      };
+    }
   };
 
   const activeKeys = apiKeys.filter((k) => k.isActive);
@@ -314,45 +347,57 @@ export default function Account() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Key</TableHead>
+                    <TableHead>Expires</TableHead>
                     <TableHead>Last Used</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeKeys.map((apiKey) => (
-                    <TableRow key={apiKey._id}>
-                      <TableCell className="font-medium">{apiKey.name}</TableCell>
-                      <TableCell>
-                        <code className="rounded bg-muted px-2 py-1 text-sm">
-                          {apiKey.keyPrefix}...
-                        </code>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(apiKey.lastUsedAt)}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(apiKey.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => setKeyToRevoke(apiKey)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Revoke key</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {activeKeys.map((apiKey) => {
+                    const expStatus = getExpirationStatus(apiKey.expiresAt);
+                    return (
+                      <TableRow key={apiKey._id}>
+                        <TableCell className="font-medium">{apiKey.name}</TableCell>
+                        <TableCell>
+                          <code className="rounded bg-muted px-2 py-1 text-sm">
+                            {apiKey.keyPrefix}...
+                          </code>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={expStatus.variant}>
+                            {expStatus.variant === 'destructive' && (
+                              <Clock className="mr-1 h-3 w-3" />
+                            )}
+                            {expStatus.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(apiKey.lastUsedAt)}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(apiKey.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => setKeyToRevoke(apiKey)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Revoke key</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -371,7 +416,13 @@ export default function Account() {
       </Card>
 
       {/* Create Key Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) {
+          setNewKeyName('');
+          setKeyExpiration('never');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create API Key</DialogTitle>
@@ -389,6 +440,25 @@ export default function Account() {
                 placeholder="e.g., Production Server, Local Development"
                 autoFocus
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expiration">Expiration</Label>
+              <Select value={keyExpiration} onValueChange={setKeyExpiration}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select expiration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="never">Never expires</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                  <SelectItem value="60">60 days</SelectItem>
+                  <SelectItem value="90">90 days</SelectItem>
+                  <SelectItem value="180">6 months</SelectItem>
+                  <SelectItem value="365">1 year</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                For security, consider setting an expiration for production keys.
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -418,9 +488,23 @@ export default function Account() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Name</Label>
-              <p className="text-sm">{createdKey?.name}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Name</Label>
+                <p className="text-sm font-medium">{createdKey?.name}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Expires</Label>
+                <p className="text-sm font-medium">
+                  {createdKey?.expiresAt
+                    ? new Date(createdKey.expiresAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'Never'}
+                </p>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>API Key</Label>

@@ -48,7 +48,7 @@
 - [x] Update username from Account page
 - [x] Change password
 - [x] Forgot password / reset flow
-- [ ] API key expiration option in UI
+- [x] API key expiration option in UI
 
 ## Admin Features
 - [x] User management page (invite, deactivate, change role)
