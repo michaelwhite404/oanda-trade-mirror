@@ -182,6 +182,57 @@ router.patch('/:id', async (req: Request, res: Response) => {
       }
     }
 
+    // Check if we're reactivating a pending user
+    const existingUser = await User.findById(id);
+    if (!existingUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const isReactivatingPendingUser =
+      updates.isActive === true &&
+      !existingUser.isActive &&
+      existingUser.registrationStatus === 'pending';
+
+    // If reactivating a pending user, regenerate invite token
+    if (isReactivatingPendingUser) {
+      const inviteToken = generateInviteToken();
+      const inviteExpiresAt = new Date();
+      inviteExpiresAt.setDate(inviteExpiresAt.getDate() + INVITE_EXPIRY_DAYS);
+
+      existingUser.isActive = true;
+      existingUser.inviteToken = inviteToken;
+      existingUser.inviteExpiresAt = inviteExpiresAt;
+      if (updates.role) {
+        existingUser.role = updates.role;
+      }
+      await existingUser.save();
+
+      // Send new invite email
+      const invitedBy = req.authUser?.username;
+      await emailService.sendInvite({
+        email: existingUser.email,
+        inviteToken,
+        role: existingUser.role,
+        invitedBy,
+      });
+
+      res.json({
+        _id: existingUser._id,
+        username: existingUser.username,
+        email: existingUser.email,
+        role: existingUser.role,
+        isActive: existingUser.isActive,
+        registrationStatus: existingUser.registrationStatus,
+        lastLoginAt: existingUser.lastLoginAt,
+        authProvider: existingUser.authProvider,
+        avatarUrl: existingUser.avatarUrl,
+        createdAt: existingUser.createdAt,
+        updatedAt: existingUser.updatedAt,
+      });
+      return;
+    }
+
     const user = await User.findByIdAndUpdate(
       id,
       { $set: updates },
