@@ -37,7 +37,9 @@ import { useUsers, useInviteUser, useResendInvite, useUpdateUser, useDeleteUser 
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useAuth } from '@/context/AuthContext';
 import { AddUserDialog, InviteFormData } from '@/components/users/AddUserDialog';
-import { Plus, UserX, Mail, Clock } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Plus, UserX, UserCheck, Mail, Clock } from 'lucide-react';
 import { UserAccount } from '@/api/client';
 
 function TableSkeleton() {
@@ -58,6 +60,7 @@ function TableSkeleton() {
 
 export default function Users() {
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const [userToDeactivate, setUserToDeactivate] = useState<UserAccount | null>(null);
   const { data: users = [], isLoading, refetch } = useUsers();
   const inviteUserMutation = useInviteUser();
@@ -97,6 +100,16 @@ export default function Users() {
     }
   };
 
+  const handleReactivate = async (userId: string) => {
+    await updateUserMutation.mutateAsync({
+      id: userId,
+      data: { isActive: true },
+    });
+  };
+
+  const filteredUsers = showInactive ? users : users.filter((u) => u.isActive);
+  const inactiveCount = users.filter((u) => !u.isActive).length;
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Never';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -112,11 +125,25 @@ export default function Users() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold sm:text-3xl">Users</h1>
-        <Button onClick={() => setShowAddUser(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          <span className="hidden sm:inline">Invite User</span>
-          <span className="sm:hidden">Invite</span>
-        </Button>
+        <div className="flex items-center gap-4">
+          {inactiveCount > 0 && (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-inactive"
+                checked={showInactive}
+                onCheckedChange={setShowInactive}
+              />
+              <Label htmlFor="show-inactive" className="text-sm text-muted-foreground cursor-pointer">
+                Show inactive ({inactiveCount})
+              </Label>
+            </div>
+          )}
+          <Button onClick={() => setShowAddUser(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Invite User</span>
+            <span className="sm:hidden">Invite</span>
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -144,8 +171,8 @@ export default function Users() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.filter((u) => u.isActive).map((user) => (
-                <TableRow key={user._id}>
+              {filteredUsers.map((user) => (
+                <TableRow key={user._id} className={!user.isActive ? 'opacity-60' : ''}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       {user.avatarUrl ? (
@@ -201,7 +228,9 @@ export default function Users() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {user.registrationStatus === 'pending' ? (
+                    {!user.isActive ? (
+                      <Badge variant="destructive">Inactive</Badge>
+                    ) : user.registrationStatus === 'pending' ? (
                       <Badge variant="outline" className="gap-1">
                         <Clock className="h-3 w-3" />
                         Pending
@@ -219,7 +248,7 @@ export default function Users() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {user.registrationStatus === 'pending' && (
+                      {user.registrationStatus === 'pending' && user.isActive && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -251,6 +280,24 @@ export default function Users() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Deactivate user</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {!user.isActive && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-green-600 hover:text-green-600"
+                                onClick={() => handleReactivate(user._id)}
+                                disabled={updateUserMutation.isPending}
+                              >
+                                <UserCheck className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Reactivate user</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       )}
