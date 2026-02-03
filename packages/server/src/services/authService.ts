@@ -27,6 +27,7 @@ export interface UserResponse {
   lastLoginAt: Date | null;
   avatarUrl: string | null;
   authProvider: AuthProvider;
+  hasPassword: boolean;
 }
 
 export interface OAuthProfile {
@@ -261,6 +262,7 @@ class AuthService {
       lastLoginAt: user.lastLoginAt,
       avatarUrl: user.avatarUrl,
       authProvider: user.authProvider,
+      hasPassword: !!user.passwordHash,
     };
   }
 }

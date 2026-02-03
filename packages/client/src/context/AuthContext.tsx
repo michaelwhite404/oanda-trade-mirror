@@ -8,6 +8,7 @@ export interface User {
   lastLoginAt: string | null;
   avatarUrl: string | null;
   authProvider: 'local' | 'google';
+  hasPassword: boolean;
 }
 
 interface AuthContextType {

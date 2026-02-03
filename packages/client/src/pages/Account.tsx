@@ -47,7 +47,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield, Pencil } from 'lucide-react';
+import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield, Pencil, Lock } from 'lucide-react';
 import { api, ApiKeyInfo, ApiKeyWithSecret } from '@/api/client';
 
 function ApiKeysSkeleton() {
@@ -69,8 +69,12 @@ export default function Account() {
   const { user, updateUser } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditUsernameDialog, setShowEditUsernameDialog] = useState(false);
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [newUsername, setNewUsername] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [createdKey, setCreatedKey] = useState<ApiKeyWithSecret | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKeyInfo | null>(null);
   const [copied, setCopied] = useState(false);
@@ -93,9 +97,58 @@ export default function Account() {
     },
   });
 
+  const changePasswordMutation = useMutation({
+    mutationFn: (data: { currentPassword: string; newPassword: string }) => api.changePassword(data),
+    onSuccess: () => {
+      toast.success('Password changed successfully');
+      setShowChangePasswordDialog(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to change password', {
+        description: error.message,
+      });
+    },
+  });
+
+  const setPasswordMutation = useMutation({
+    mutationFn: (data: { newPassword: string }) => api.setPassword(data),
+    onSuccess: () => {
+      toast.success('Password set successfully');
+      updateUser({ hasPassword: true });
+      setShowChangePasswordDialog(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to set password', {
+        description: error.message,
+      });
+    },
+  });
+
   const handleEditUsername = () => {
     setNewUsername(user?.username || '');
     setShowEditUsernameDialog(true);
+  };
+
+  const handlePasswordSubmit = () => {
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    if (user?.hasPassword) {
+      changePasswordMutation.mutate({ currentPassword, newPassword });
+    } else {
+      setPasswordMutation.mutate({ newPassword });
+    }
   };
 
   const handleSaveUsername = () => {
@@ -202,6 +255,32 @@ export default function Account() {
               <span className="text-muted-foreground">Role:</span>
               <span className="capitalize">{user?.role}</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Security Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Security</CardTitle>
+          <CardDescription>Manage your account security</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Lock className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Password</p>
+                <p className="text-xs text-muted-foreground">
+                  {user?.hasPassword
+                    ? 'Change your account password'
+                    : 'Set a password to enable email/password login'}
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" onClick={() => setShowChangePasswordDialog(true)}>
+              {user?.hasPassword ? 'Change Password' : 'Set Password'}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -420,6 +499,82 @@ export default function Account() {
               disabled={!newUsername.trim() || newUsername === user?.username || updateUsernameMutation.isPending}
             >
               {updateUsernameMutation.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Set/Change Password Dialog */}
+      <Dialog open={showChangePasswordDialog} onOpenChange={(open) => {
+        setShowChangePasswordDialog(open);
+        if (!open) {
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{user?.hasPassword ? 'Change Password' : 'Set Password'}</DialogTitle>
+            <DialogDescription>
+              {user?.hasPassword
+                ? 'Enter your current password and choose a new one.'
+                : 'Set a password to enable email/password login alongside your existing sign-in method.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {user?.hasPassword && (
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">{user?.hasPassword ? 'New Password' : 'Password'}</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoFocus={!user?.hasPassword}
+              />
+              <p className="text-xs text-muted-foreground">
+                At least 8 characters with uppercase, lowercase, and numbers.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowChangePasswordDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePasswordSubmit}
+              disabled={
+                (user?.hasPassword && !currentPassword) ||
+                !newPassword ||
+                !confirmPassword ||
+                changePasswordMutation.isPending ||
+                setPasswordMutation.isPending
+              }
+            >
+              {(changePasswordMutation.isPending || setPasswordMutation.isPending)
+                ? (user?.hasPassword ? 'Changing...' : 'Setting...')
+                : (user?.hasPassword ? 'Change Password' : 'Set Password')}
             </Button>
           </DialogFooter>
         </DialogContent>

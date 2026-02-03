@@ -330,6 +330,28 @@ export const api = {
     return handleResponse<{ user: { id: string; username: string; email: string; role: string; lastLoginAt: string | null; avatarUrl: string | null; authProvider: string } }>(response, doFetch);
   },
 
+  async changePassword(data: { currentPassword: string; newPassword: string }) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/auth/change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    const response = await doFetch();
+    return handleResponse<{ success: boolean }>(response, doFetch);
+  },
+
+  async setPassword(data: { newPassword: string }) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/auth/set-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    const response = await doFetch();
+    return handleResponse<{ success: boolean; hasPassword: boolean }>(response, doFetch);
+  },
+
   // API Keys
   async getApiKeys() {
     const doFetch = () => fetchWithCredentials(`${BASE_URL}/api-keys`);

@@ -356,6 +356,96 @@ router.patch('/profile', authenticate, async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/auth/set-password - Set password for users who don't have one (Google users)
+router.post('/set-password', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.authUser!.userId;
+    const { newPassword } = req.body;
+
+    if (!newPassword) {
+      res.status(400).json({ error: 'New password is required' });
+      return;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Only allow if user doesn't have a password yet
+    if (user.passwordHash) {
+      res.status(400).json({ error: 'Password already set. Use change-password instead.' });
+      return;
+    }
+
+    // Validate new password
+    const passwordValidation = await authService.validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      res.status(400).json({ error: passwordValidation.message });
+      return;
+    }
+
+    // Hash and save password
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    user.passwordHash = passwordHash;
+    await user.save();
+
+    res.json({ success: true, hasPassword: true });
+  } catch (error) {
+    console.error('[Auth] Set password error:', error);
+    res.status(500).json({ error: 'Failed to set password' });
+  }
+});
+
+// POST /api/auth/change-password - Change current user's password
+router.post('/change-password', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.authUser!.userId;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: 'Current password and new password are required' });
+      return;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    if (!user.passwordHash) {
+      res.status(400).json({ error: 'No password set. Use set-password instead.' });
+      return;
+    }
+
+    // Verify current password
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) {
+      res.status(401).json({ error: 'Current password is incorrect' });
+      return;
+    }
+
+    // Validate new password
+    const passwordValidation = await authService.validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      res.status(400).json({ error: passwordValidation.message });
+      return;
+    }
+
+    // Hash and save new password
+    const newPasswordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    user.passwordHash = newPasswordHash;
+    await user.save();
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Auth] Change password error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
 // GET /api/auth/google - Initiate Google OAuth
 router.get('/google', passport.authenticate('google', { session: false }));
 
