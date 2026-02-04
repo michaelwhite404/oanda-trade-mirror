@@ -62,4 +62,4 @@
 - [x] Manual deploy GitHub Action
 - [x] Staging environment with auto-deploy on push to main
 - [x] Automated tests in CI pipeline
-- [ ] Database backup automation
+- [x] Database backup automation (MongoDB Atlas built-in)
