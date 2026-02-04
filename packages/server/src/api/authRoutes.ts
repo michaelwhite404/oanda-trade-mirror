@@ -19,7 +19,7 @@ const COOKIE_OPTIONS = {
 };
 
 // Frontend URL for redirects (dev server in development, same origin in production)
-const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');
+const APP_URL = process.env.APP_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');
 
 // GET /api/auth/verify-invite/:token - Verify invite token
 router.get('/verify-invite/:token', async (req: Request, res: Response) => {
@@ -610,13 +610,13 @@ router.get('/google', passport.authenticate('google', { session: false }));
 // GET /api/auth/google/callback - Google OAuth callback
 router.get(
   '/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: `${FRONTEND_URL}/login?error=oauth_failed` }),
+  passport.authenticate('google', { session: false, failureRedirect: `${APP_URL}/login?error=oauth_failed` }),
   async (req: Request, res: Response) => {
     try {
       const profile = req.user as OAuthProfile;
 
       if (!profile || !profile.email) {
-        res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
+        res.redirect(`${APP_URL}/login?error=oauth_failed`);
         return;
       }
 
@@ -644,10 +644,10 @@ router.get(
       });
 
       // Redirect to frontend
-      res.redirect(`${FRONTEND_URL}/`);
+      res.redirect(`${APP_URL}/`);
     } catch (error) {
       console.error('[Auth] Google OAuth error:', error);
-      res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
+      res.redirect(`${APP_URL}/login?error=oauth_failed`);
     }
   }
 );

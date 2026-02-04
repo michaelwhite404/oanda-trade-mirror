@@ -1,11 +1,11 @@
-# fly.toml - Fly.io configuration
+# .fly/staging.toml - Fly.io staging configuration
 # See https://fly.io/docs/reference/configuration/
 
-app = "oanda-trade-mirror"
-primary_region = "sjc"  # San Jose - change to your preferred region
+app = "oanda-trade-mirror-staging"
+primary_region = "sjc"
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = "../Dockerfile"
 
 [env]
   NODE_ENV = "production"
@@ -14,18 +14,18 @@ primary_region = "sjc"  # San Jose - change to your preferred region
 [http_service]
   internal_port = 3001
   force_https = true
-  auto_stop_machines = false  # Keep running for real-time trade monitoring
+  auto_stop_machines = true   # Save costs - staging can stop when idle
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0    # Allow scaling to zero when not in use
 
   [http_service.concurrency]
     type = "connections"
-    hard_limit = 250
-    soft_limit = 200
+    hard_limit = 100
+    soft_limit = 80
 
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "512mb"
+  memory = "256mb"  # Smaller for staging
 
 [checks]
   [checks.health]
