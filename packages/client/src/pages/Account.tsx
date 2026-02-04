@@ -55,7 +55,7 @@ import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield, Pencil, Lock, Clock } from 'lucide-react';
-import { api, ApiKeyInfo, ApiKeyWithSecret, ApiKeyScope, API_KEY_SCOPES, SCOPE_DESCRIPTIONS } from '@/api/client';
+import { api, ApiKeyInfo, ApiKeyWithSecret, ApiKeyScope, SCOPE_DESCRIPTIONS } from '@/api/client';
 import { Checkbox } from '@/components/ui/checkbox';
 
 function ApiKeysSkeleton() {
@@ -186,28 +186,90 @@ export default function Account() {
     }
   };
 
-  const toggleScope = (scope: ApiKeyScope) => {
-    if (scope === 'full') {
-      // If selecting full, clear other scopes
-      setKeyScopes(['full']);
+  // Scope tree structure
+  const scopeTree: Record<string, ApiKeyScope[]> = {
+    accounts: ['read:accounts', 'write:accounts'],
+    trades: ['read:trades', 'write:trades'],
+    logs: ['read:logs'],
+  };
+
+  const allNonFullScopes: ApiKeyScope[] = [
+    ...scopeTree.accounts,
+    ...scopeTree.trades,
+    ...scopeTree.logs,
+  ];
+
+  const isFull = keyScopes.includes('full');
+  const hasAllScopes = allNonFullScopes.every((s) => keyScopes.includes(s));
+
+  const toggleFull = () => {
+    if (isFull || hasAllScopes) {
+      // Deselect all
+      setKeyScopes([]);
     } else {
-      // If selecting a specific scope, remove 'full' and toggle the scope
-      setKeyScopes((prev) => {
-        const withoutFull = prev.filter((s) => s !== 'full');
-        if (withoutFull.includes(scope)) {
-          const newScopes = withoutFull.filter((s) => s !== scope);
-          // If no scopes left, default to full
-          return newScopes.length === 0 ? ['full'] : newScopes;
-        } else {
-          return [...withoutFull, scope];
-        }
-      });
+      // Select full
+      setKeyScopes(['full']);
     }
+  };
+
+  const toggleCategory = (category: string) => {
+    const categoryScopes = scopeTree[category];
+    const hasAll = categoryScopes.every((s) => keyScopes.includes(s) || isFull);
+
+    setKeyScopes((prev) => {
+      // Remove 'full' when toggling specific scopes
+      let newScopes: ApiKeyScope[] = prev.filter((s) => s !== 'full');
+
+      if (hasAll && !isFull) {
+        // Remove all scopes in this category
+        newScopes = newScopes.filter((s) => !categoryScopes.includes(s));
+      } else {
+        // Add all scopes in this category
+        categoryScopes.forEach((s) => {
+          if (!newScopes.includes(s)) {
+            newScopes.push(s);
+          }
+        });
+      }
+
+      return newScopes;
+    });
+  };
+
+  const toggleScope = (scope: ApiKeyScope) => {
+    if (scope === 'full') return; // Use toggleFull for full scope
+    setKeyScopes((prev) => {
+      // Remove 'full' when toggling specific scopes
+      let newScopes = prev.filter((s) => s !== 'full');
+
+      if (newScopes.includes(scope)) {
+        newScopes = newScopes.filter((s) => s !== scope);
+      } else {
+        newScopes.push(scope);
+      }
+
+      return newScopes;
+    });
+  };
+
+  const isScopeChecked = (scope: ApiKeyScope) => isFull || keyScopes.includes(scope);
+
+  const isCategoryChecked = (category: string) => {
+    const categoryScopes = scopeTree[category];
+    return categoryScopes.every((s) => isFull || keyScopes.includes(s));
+  };
+
+  const isCategoryIndeterminate = (category: string) => {
+    if (isFull) return false;
+    const categoryScopes = scopeTree[category];
+    const checkedCount = categoryScopes.filter((s) => keyScopes.includes(s)).length;
+    return checkedCount > 0 && checkedCount < categoryScopes.length;
   };
 
   const formatScopes = (scopes: ApiKeyScope[]) => {
     if (scopes.includes('full')) return 'Full access';
     if (scopes.length === 0) return 'No access';
+    if (scopes.length === allNonFullScopes.length) return 'Full access';
     if (scopes.length === 1) return SCOPE_DESCRIPTIONS[scopes[0]];
     return `${scopes.length} permissions`;
   };
@@ -507,27 +569,135 @@ export default function Account() {
             </div>
             <div className="space-y-2">
               <Label>Permissions</Label>
-              <div className="rounded-md border p-3 space-y-3">
-                {API_KEY_SCOPES.map((scope) => (
-                  <div key={scope} className="flex items-start space-x-3">
+              <div className="rounded-md border p-3 space-y-2">
+                {/* Full Access */}
+                <div className="flex items-center space-x-3">
+                  <Checkbox
+                    id="scope-full"
+                    checked={isFull || hasAllScopes}
+                    onCheckedChange={toggleFull}
+                  />
+                  <label htmlFor="scope-full" className="text-sm font-medium cursor-pointer">
+                    Full Access
+                  </label>
+                </div>
+
+                {/* Accounts */}
+                <div className="ml-4 space-y-1">
+                  <div className="flex items-center space-x-3">
                     <Checkbox
-                      id={`scope-${scope}`}
-                      checked={keyScopes.includes(scope)}
-                      onCheckedChange={() => toggleScope(scope)}
+                      id="scope-accounts"
+                      checked={isCategoryChecked('accounts')}
+                      ref={(el) => {
+                        if (el) {
+                          (el as unknown as HTMLButtonElement).dataset.state =
+                            isCategoryIndeterminate('accounts') ? 'indeterminate' :
+                            isCategoryChecked('accounts') ? 'checked' : 'unchecked';
+                        }
+                      }}
+                      onCheckedChange={() => toggleCategory('accounts')}
                     />
-                    <div className="grid gap-0.5 leading-none">
-                      <label
-                        htmlFor={`scope-${scope}`}
-                        className="text-sm font-medium cursor-pointer"
-                      >
-                        {scope === 'full' ? 'Full Access' : scope}
+                    <label htmlFor="scope-accounts" className="text-sm font-medium cursor-pointer">
+                      Accounts
+                    </label>
+                  </div>
+                  <div className="ml-6 space-y-1">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="scope-read-accounts"
+                        checked={isScopeChecked('read:accounts')}
+                        onCheckedChange={() => toggleScope('read:accounts')}
+                        disabled={isFull}
+                      />
+                      <label htmlFor="scope-read-accounts" className="text-sm cursor-pointer text-muted-foreground">
+                        Read
                       </label>
-                      <p className="text-xs text-muted-foreground">
-                        {SCOPE_DESCRIPTIONS[scope]}
-                      </p>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="scope-write-accounts"
+                        checked={isScopeChecked('write:accounts')}
+                        onCheckedChange={() => toggleScope('write:accounts')}
+                        disabled={isFull}
+                      />
+                      <label htmlFor="scope-write-accounts" className="text-sm cursor-pointer text-muted-foreground">
+                        Write
+                      </label>
                     </div>
                   </div>
-                ))}
+                </div>
+
+                {/* Trades */}
+                <div className="ml-4 space-y-1">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="scope-trades"
+                      checked={isCategoryChecked('trades')}
+                      ref={(el) => {
+                        if (el) {
+                          (el as unknown as HTMLButtonElement).dataset.state =
+                            isCategoryIndeterminate('trades') ? 'indeterminate' :
+                            isCategoryChecked('trades') ? 'checked' : 'unchecked';
+                        }
+                      }}
+                      onCheckedChange={() => toggleCategory('trades')}
+                    />
+                    <label htmlFor="scope-trades" className="text-sm font-medium cursor-pointer">
+                      Trades
+                    </label>
+                  </div>
+                  <div className="ml-6 space-y-1">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="scope-read-trades"
+                        checked={isScopeChecked('read:trades')}
+                        onCheckedChange={() => toggleScope('read:trades')}
+                        disabled={isFull}
+                      />
+                      <label htmlFor="scope-read-trades" className="text-sm cursor-pointer text-muted-foreground">
+                        Read
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="scope-write-trades"
+                        checked={isScopeChecked('write:trades')}
+                        onCheckedChange={() => toggleScope('write:trades')}
+                        disabled={isFull}
+                      />
+                      <label htmlFor="scope-write-trades" className="text-sm cursor-pointer text-muted-foreground">
+                        Write
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logs */}
+                <div className="ml-4 space-y-1">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="scope-logs"
+                      checked={isCategoryChecked('logs')}
+                      onCheckedChange={() => toggleCategory('logs')}
+                    />
+                    <label htmlFor="scope-logs" className="text-sm font-medium cursor-pointer">
+                      Logs
+                    </label>
+                  </div>
+                  <div className="ml-6 space-y-1">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="scope-read-logs"
+                        checked={isScopeChecked('read:logs')}
+                        onCheckedChange={() => toggleScope('read:logs')}
+                        disabled={isFull}
+                      />
+                      <label htmlFor="scope-read-logs" className="text-sm cursor-pointer text-muted-foreground">
+                        Read
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
                 For security, grant only the permissions your application needs.
