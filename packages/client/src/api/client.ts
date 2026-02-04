@@ -412,6 +412,31 @@ export const api = {
     const response = await doFetch();
     return handleResponse<{ success: boolean }>(response, doFetch);
   },
+
+  // Sessions
+  async getSessions() {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/auth/sessions`);
+    const response = await doFetch();
+    return handleResponse<{ sessions: SessionInfo[] }>(response, doFetch);
+  },
+
+  async revokeSession(id: string) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/auth/sessions/${id}`, {
+        method: "DELETE",
+      });
+    const response = await doFetch();
+    return handleResponse<{ success: boolean }>(response, doFetch);
+  },
+
+  async revokeOtherSessions() {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/auth/sessions/revoke-others`, {
+        method: "POST",
+      });
+    const response = await doFetch();
+    return handleResponse<{ success: boolean; revokedCount: number }>(response, doFetch);
+  },
 };
 
 // Types
@@ -731,4 +756,14 @@ export interface CreateApiKeyRequest {
   name: string;
   expiresInDays?: number;
   scopes?: ApiKeyScope[];
+}
+
+// Session types
+export interface SessionInfo {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  lastActiveAt: string;
+  createdAt: string;
+  isCurrent: boolean;
 }

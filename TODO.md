@@ -40,7 +40,7 @@
 - [x] JWT authentication with httpOnly cookies
 - [x] Google OAuth sign-in
 - [x] API key authentication for programmatic access
-- [ ] Active sessions list (show where logged in, allow revoking)
+- [x] Active sessions list (show where logged in, allow revoking)
 - [x] API key scopes/permissions (read-only, specific endpoints)
 
 ## User Account

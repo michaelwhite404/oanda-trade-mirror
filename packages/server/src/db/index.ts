@@ -5,3 +5,4 @@ export { ExecutionLog, ExecutionLogDocument } from './models/ExecutionLog';
 export { User, UserDocument } from './models/User';
 export { PushSubscription, PushSubscriptionDocument } from './models/PushSubscription';
 export { ApiKey, ApiKeyDocument } from './models/ApiKey';
+export { Session, SessionDocument } from './models/Session';

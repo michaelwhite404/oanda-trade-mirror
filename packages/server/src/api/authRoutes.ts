@@ -114,7 +114,11 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
     await user.save();
 
     // Auto-login the user
-    const { user: userResponse, tokens } = await authService.login(username, password);
+    const metadata = {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip || req.socket.remoteAddress,
+    };
+    const { user: userResponse, tokens, sessionId } = await authService.login(username, password, metadata);
 
     // Set cookies
     res.cookie('accessToken', tokens.accessToken, {
@@ -123,6 +127,11 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
     });
 
     res.cookie('refreshToken', tokens.refreshToken, {
+      ...COOKIE_OPTIONS,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.cookie('sessionId', sessionId, {
       ...COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -207,7 +216,12 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
-    const { user, tokens } = await authService.login(username, password);
+    const metadata = {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip || req.socket.remoteAddress,
+    };
+
+    const { user, tokens, sessionId } = await authService.login(username, password, metadata);
 
     // Set cookies
     res.cookie('accessToken', tokens.accessToken, {
@@ -216,6 +230,11 @@ router.post('/login', async (req: Request, res: Response) => {
     });
 
     res.cookie('refreshToken', tokens.refreshToken, {
+      ...COOKIE_OPTIONS,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    res.cookie('sessionId', sessionId, {
       ...COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -236,10 +255,14 @@ router.post('/login', async (req: Request, res: Response) => {
 // POST /api/auth/logout - Logout user
 router.post('/logout', authenticate, async (req: Request, res: Response) => {
   try {
-    await authService.logout(req.authUser!.userId);
+    const sessionId = req.cookies?.sessionId;
+    if (sessionId) {
+      await authService.logout(sessionId);
+    }
 
     res.clearCookie('accessToken', COOKIE_OPTIONS);
     res.clearCookie('refreshToken', COOKIE_OPTIONS);
+    res.clearCookie('sessionId', COOKIE_OPTIONS);
 
     res.json({ success: true });
   } catch (error) {
@@ -252,13 +275,14 @@ router.post('/logout', authenticate, async (req: Request, res: Response) => {
 router.post('/refresh', async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
+    const sessionId = req.cookies?.sessionId;
 
-    if (!refreshToken) {
+    if (!refreshToken || !sessionId) {
       res.status(401).json({ error: 'Refresh token required' });
       return;
     }
 
-    const tokens = await authService.refresh(refreshToken);
+    const { tokens, sessionId: newSessionId } = await authService.refresh(refreshToken, sessionId);
 
     res.cookie('accessToken', tokens.accessToken, {
       ...COOKIE_OPTIONS,
@@ -270,11 +294,17 @@ router.post('/refresh', async (req: Request, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    res.cookie('sessionId', newSessionId, {
+      ...COOKIE_OPTIONS,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     res.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === 'Invalid refresh token') {
       res.clearCookie('accessToken', COOKIE_OPTIONS);
       res.clearCookie('refreshToken', COOKIE_OPTIONS);
+      res.clearCookie('sessionId', COOKIE_OPTIONS);
       res.status(401).json({ error: 'Invalid refresh token' });
       return;
     }
@@ -590,7 +620,12 @@ router.get(
         return;
       }
 
-      const { tokens } = await authService.oauthLogin(profile);
+      const metadata = {
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip || req.socket.remoteAddress,
+      };
+
+      const { tokens, sessionId } = await authService.oauthLogin(profile, metadata);
 
       // Set cookies
       res.cookie('accessToken', tokens.accessToken, {
@@ -603,6 +638,11 @@ router.get(
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
+      res.cookie('sessionId', sessionId, {
+        ...COOKIE_OPTIONS,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
       // Redirect to frontend
       res.redirect(`${FRONTEND_URL}/`);
     } catch (error) {
@@ -611,5 +651,67 @@ router.get(
     }
   }
 );
+
+// GET /api/auth/sessions - Get all active sessions for current user
+router.get('/sessions', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.authUser!.userId;
+    const currentSessionId = req.cookies?.sessionId;
+
+    const sessions = await authService.getSessions(userId, currentSessionId);
+
+    res.json({ sessions });
+  } catch (error) {
+    console.error('[Auth] Get sessions error:', error);
+    res.status(500).json({ error: 'Failed to get sessions' });
+  }
+});
+
+// DELETE /api/auth/sessions/:id - Revoke a specific session
+router.delete('/sessions/:id', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.authUser!.userId;
+    const sessionId = req.params.id;
+    const currentSessionId = req.cookies?.sessionId;
+
+    // Prevent revoking current session via this endpoint
+    if (sessionId === currentSessionId) {
+      res.status(400).json({ error: 'Cannot revoke current session. Use logout instead.' });
+      return;
+    }
+
+    const deleted = await authService.revokeSession(userId, sessionId);
+
+    if (!deleted) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Auth] Revoke session error:', error);
+    res.status(500).json({ error: 'Failed to revoke session' });
+  }
+});
+
+// POST /api/auth/sessions/revoke-others - Revoke all sessions except current
+router.post('/sessions/revoke-others', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.authUser!.userId;
+    const currentSessionId = req.cookies?.sessionId;
+
+    if (!currentSessionId) {
+      res.status(400).json({ error: 'No current session found' });
+      return;
+    }
+
+    const count = await authService.revokeAllOtherSessions(userId, currentSessionId);
+
+    res.json({ success: true, revokedCount: count });
+  } catch (error) {
+    console.error('[Auth] Revoke other sessions error:', error);
+    res.status(500).json({ error: 'Failed to revoke sessions' });
+  }
+});
 
 export default router;

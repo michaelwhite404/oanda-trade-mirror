@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { User, UserDocument } from '../db';
+import { Types } from 'mongoose';
+import { User, UserDocument, Session } from '../db';
 import { UserRole, AuthProvider } from '../types/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
@@ -38,6 +39,20 @@ export interface OAuthProfile {
   avatarUrl?: string;
 }
 
+export interface SessionMetadata {
+  userAgent?: string;
+  ipAddress?: string;
+}
+
+export interface SessionInfo {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  lastActiveAt: Date;
+  createdAt: Date;
+  isCurrent: boolean;
+}
+
 class AuthService {
   async register(
     username: string,
@@ -64,7 +79,10 @@ class AuthService {
     return user;
   }
 
-  async oauthLogin(profile: OAuthProfile): Promise<{ user: UserResponse; tokens: AuthTokens }> {
+  async oauthLogin(
+    profile: OAuthProfile,
+    metadata?: SessionMetadata
+  ): Promise<{ user: UserResponse; tokens: AuthTokens; sessionId: string }> {
     // Check if this is the first user - make them admin
     const userCount = await User.countDocuments();
     const assignedRole = userCount === 0 ? 'admin' : 'viewer';
@@ -102,15 +120,24 @@ class AuthService {
 
     const tokens = await this.generateTokens(user);
 
-    // Store refresh token hash and update login time
+    // Create session with refresh token hash
     const refreshTokenHash = await bcrypt.hash(tokens.refreshToken, SALT_ROUNDS);
-    user.refreshTokenHash = refreshTokenHash;
+    const session = new Session({
+      userId: user._id,
+      refreshTokenHash,
+      userAgent: metadata?.userAgent || null,
+      ipAddress: metadata?.ipAddress || null,
+      lastActiveAt: new Date(),
+    });
+    await session.save();
+
     user.lastLoginAt = new Date();
     await user.save();
 
     return {
       user: this.toUserResponse(user),
       tokens,
+      sessionId: session._id.toString(),
     };
   }
 
@@ -138,8 +165,9 @@ class AuthService {
 
   async login(
     username: string,
-    password: string
-  ): Promise<{ user: UserResponse; tokens: AuthTokens }> {
+    password: string,
+    metadata?: SessionMetadata
+  ): Promise<{ user: UserResponse; tokens: AuthTokens; sessionId: string }> {
     const user = await User.findOne({
       $or: [{ username }, { email: username.toLowerCase() }],
       isActive: true,
@@ -161,23 +189,39 @@ class AuthService {
 
     const tokens = await this.generateTokens(user);
 
-    // Store refresh token hash
+    // Create session with refresh token hash
     const refreshTokenHash = await bcrypt.hash(tokens.refreshToken, SALT_ROUNDS);
-    user.refreshTokenHash = refreshTokenHash;
+    const session = new Session({
+      userId: user._id,
+      refreshTokenHash,
+      userAgent: metadata?.userAgent || null,
+      ipAddress: metadata?.ipAddress || null,
+      lastActiveAt: new Date(),
+    });
+    await session.save();
+
     user.lastLoginAt = new Date();
     await user.save();
 
     return {
       user: this.toUserResponse(user),
       tokens,
+      sessionId: session._id.toString(),
     };
   }
 
-  async logout(userId: string): Promise<void> {
-    await User.findByIdAndUpdate(userId, { refreshTokenHash: null });
+  async logout(sessionId: string): Promise<void> {
+    await Session.findByIdAndDelete(sessionId);
   }
 
-  async refresh(refreshToken: string): Promise<AuthTokens> {
+  async logoutAll(userId: string): Promise<void> {
+    await Session.deleteMany({ userId: new Types.ObjectId(userId) });
+  }
+
+  async refresh(
+    refreshToken: string,
+    currentSessionId: string
+  ): Promise<{ tokens: AuthTokens; sessionId: string }> {
     let payload: TokenPayload;
     try {
       payload = jwt.verify(refreshToken, JWT_SECRET) as TokenPayload;
@@ -186,12 +230,18 @@ class AuthService {
     }
 
     const user = await User.findById(payload.userId);
-    if (!user || !user.isActive || !user.refreshTokenHash) {
+    if (!user || !user.isActive) {
       throw new Error('Invalid refresh token');
     }
 
-    // Verify the refresh token matches
-    const isValid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+    // Find the session
+    const session = await Session.findById(currentSessionId);
+    if (!session || session.userId.toString() !== payload.userId) {
+      throw new Error('Invalid refresh token');
+    }
+
+    // Verify the refresh token matches this session
+    const isValid = await bcrypt.compare(refreshToken, session.refreshTokenHash);
     if (!isValid) {
       throw new Error('Invalid refresh token');
     }
@@ -199,12 +249,13 @@ class AuthService {
     // Generate new tokens (rotation)
     const tokens = await this.generateTokens(user);
 
-    // Update stored refresh token hash
+    // Update session with new refresh token hash
     const newRefreshTokenHash = await bcrypt.hash(tokens.refreshToken, SALT_ROUNDS);
-    user.refreshTokenHash = newRefreshTokenHash;
-    await user.save();
+    session.refreshTokenHash = newRefreshTokenHash;
+    session.lastActiveAt = new Date();
+    await session.save();
 
-    return tokens;
+    return { tokens, sessionId: session._id.toString() };
   }
 
   async getUser(userId: string): Promise<UserResponse | null> {
@@ -213,6 +264,36 @@ class AuthService {
       return null;
     }
     return this.toUserResponse(user);
+  }
+
+  async getSessions(userId: string, currentSessionId?: string): Promise<SessionInfo[]> {
+    const sessions = await Session.find({ userId: new Types.ObjectId(userId) })
+      .sort({ lastActiveAt: -1 });
+
+    return sessions.map((session) => ({
+      id: session._id.toString(),
+      userAgent: session.userAgent,
+      ipAddress: session.ipAddress,
+      lastActiveAt: session.lastActiveAt,
+      createdAt: session.createdAt!,
+      isCurrent: session._id.toString() === currentSessionId,
+    }));
+  }
+
+  async revokeSession(userId: string, sessionId: string): Promise<boolean> {
+    const result = await Session.deleteOne({
+      _id: new Types.ObjectId(sessionId),
+      userId: new Types.ObjectId(userId),
+    });
+    return result.deletedCount > 0;
+  }
+
+  async revokeAllOtherSessions(userId: string, currentSessionId: string): Promise<number> {
+    const result = await Session.deleteMany({
+      userId: new Types.ObjectId(userId),
+      _id: { $ne: new Types.ObjectId(currentSessionId) },
+    });
+    return result.deletedCount;
   }
 
   async validatePassword(password: string): Promise<{ valid: boolean; message?: string }> {

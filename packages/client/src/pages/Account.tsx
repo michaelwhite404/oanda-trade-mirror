@@ -52,10 +52,11 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/context/AuthContext';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
+import { useSessions, useRevokeSession, useRevokeOtherSessions } from '@/hooks/useSessions';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield, Pencil, Lock, Clock } from 'lucide-react';
-import { api, ApiKeyInfo, ApiKeyWithSecret, ApiKeyScope, SCOPE_DESCRIPTIONS } from '@/api/client';
+import { Plus, Trash2, Copy, Check, Key, AlertTriangle, User, Mail, Shield, Pencil, Lock, Clock, Monitor, Smartphone, LogOut } from 'lucide-react';
+import { api, ApiKeyInfo, ApiKeyWithSecret, ApiKeyScope, SCOPE_DESCRIPTIONS, SessionInfo } from '@/api/client';
 import { Checkbox } from '@/components/ui/checkbox';
 
 function ApiKeysSkeleton() {
@@ -87,9 +88,14 @@ export default function Account() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [createdKey, setCreatedKey] = useState<ApiKeyWithSecret | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKeyInfo | null>(null);
+  const [sessionToRevoke, setSessionToRevoke] = useState<SessionInfo | null>(null);
+  const [showRevokeOtherSessions, setShowRevokeOtherSessions] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const { data: apiKeys = [], isLoading: isLoadingKeys } = useApiKeys();
+  const { data: sessions = [], isLoading: isLoadingSessions } = useSessions();
+  const revokeSessionMutation = useRevokeSession();
+  const revokeOtherSessionsMutation = useRevokeOtherSessions();
   const createMutation = useCreateApiKey();
   const deleteMutation = useDeleteApiKey();
 
@@ -322,6 +328,66 @@ export default function Account() {
 
   const activeKeys = apiKeys.filter((k) => k.isActive);
 
+  const handleRevokeSession = async () => {
+    if (sessionToRevoke) {
+      await revokeSessionMutation.mutateAsync(sessionToRevoke.id);
+      toast.success('Session revoked');
+      setSessionToRevoke(null);
+    }
+  };
+
+  const handleRevokeOtherSessions = async () => {
+    const result = await revokeOtherSessionsMutation.mutateAsync();
+    toast.success(`Revoked ${result.revokedCount} other session${result.revokedCount === 1 ? '' : 's'}`);
+    setShowRevokeOtherSessions(false);
+  };
+
+  const parseUserAgent = (ua: string | null) => {
+    if (!ua) return { device: 'Unknown Device', browser: 'Unknown Browser' };
+
+    let device = 'Desktop';
+    let browser = 'Unknown Browser';
+
+    // Detect mobile
+    if (/Mobile|Android|iPhone|iPad/.test(ua)) {
+      if (/iPhone/.test(ua)) device = 'iPhone';
+      else if (/iPad/.test(ua)) device = 'iPad';
+      else if (/Android/.test(ua)) device = 'Android';
+      else device = 'Mobile';
+    } else if (/Macintosh/.test(ua)) {
+      device = 'Mac';
+    } else if (/Windows/.test(ua)) {
+      device = 'Windows';
+    } else if (/Linux/.test(ua)) {
+      device = 'Linux';
+    }
+
+    // Detect browser
+    if (/Chrome/.test(ua) && !/Edg/.test(ua)) browser = 'Chrome';
+    else if (/Safari/.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
+    else if (/Firefox/.test(ua)) browser = 'Firefox';
+    else if (/Edg/.test(ua)) browser = 'Edge';
+
+    return { device, browser };
+  };
+
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const otherSessionsCount = sessions.filter((s) => !s.isCurrent).length;
+
   return (
     <div className="space-y-6">
       <div>
@@ -407,6 +473,101 @@ export default function Account() {
               {user?.hasPassword ? 'Change Password' : 'Set Password'}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Active Sessions Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>Active Sessions</CardTitle>
+            <CardDescription>Devices where you're currently logged in</CardDescription>
+          </div>
+          {otherSessionsCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRevokeOtherSessions(true)}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out Others
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {isLoadingSessions ? (
+            <div className="space-y-3">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : sessions.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <Monitor className="mx-auto h-10 w-10 text-muted-foreground/50" />
+              <p className="mt-3 text-sm text-muted-foreground">
+                No active sessions found.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sessions.map((session) => {
+                const { device, browser } = parseUserAgent(session.userAgent);
+                const isMobile = ['iPhone', 'iPad', 'Android', 'Mobile'].includes(device);
+                return (
+                  <div
+                    key={session.id}
+                    className="flex items-center gap-4 rounded-lg border p-3"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                      {isMobile ? (
+                        <Smartphone className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <Monitor className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">
+                          {browser} on {device}
+                        </p>
+                        {session.isCurrent && (
+                          <Badge variant="secondary" className="text-xs">
+                            This device
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {session.ipAddress || 'Unknown IP'} · Last active {formatRelativeTime(session.lastActiveAt)}
+                      </p>
+                    </div>
+                    {!session.isCurrent && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setSessionToRevoke(session)}
+                            >
+                              <LogOut className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Sign out this device</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -916,6 +1077,49 @@ export default function Account() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Revoke Session Confirmation Dialog */}
+      <AlertDialog open={!!sessionToRevoke} onOpenChange={() => setSessionToRevoke(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign Out Device</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out this device? They will need to log in again to access their account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevokeSession}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Revoke Other Sessions Confirmation Dialog */}
+      <AlertDialog open={showRevokeOtherSessions} onOpenChange={setShowRevokeOtherSessions}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign Out Other Devices</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will sign you out of all other devices ({otherSessionsCount} session{otherSessionsCount === 1 ? '' : 's'}).
+              You will remain signed in on this device.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevokeOtherSessions}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sign Out Others
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
