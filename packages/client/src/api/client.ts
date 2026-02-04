@@ -303,6 +303,17 @@ export const api = {
     return handleResponse<{ success: boolean }>(response, doFetch);
   },
 
+  async getAuditLog(params: GetAuditLogParams = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit) searchParams.set('limit', String(params.limit));
+    if (params.offset) searchParams.set('offset', String(params.offset));
+    if (params.action) searchParams.set('action', params.action);
+
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/users/audit-log?${searchParams}`);
+    const response = await doFetch();
+    return handleResponse<AuditLogResponse>(response, doFetch);
+  },
+
   // Auth - public endpoints for registration
   async verifyInvite(token: string) {
     const response = await fetch(`${BASE_URL}/auth/verify-invite/${token}`);
@@ -756,6 +767,40 @@ export interface CreateApiKeyRequest {
   name: string;
   expiresInDays?: number;
   scopes?: ApiKeyScope[];
+}
+
+// Audit log types
+export type AuditAction =
+  | 'user.invited'
+  | 'user.registered'
+  | 'user.role_changed'
+  | 'user.deactivated'
+  | 'user.reactivated'
+  | 'user.invite_resent';
+
+export interface AuditLogEntry {
+  _id: string;
+  action: AuditAction;
+  actorId: string;
+  actorUsername: string;
+  targetId?: string;
+  targetEmail?: string;
+  targetUsername?: string;
+  details?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface GetAuditLogParams {
+  limit?: number;
+  offset?: number;
+  action?: AuditAction;
+}
+
+export interface AuditLogResponse {
+  logs: AuditLogEntry[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 // Session types

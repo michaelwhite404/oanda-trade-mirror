@@ -53,8 +53,8 @@
 ## Admin Features
 - [x] User management page (invite, deactivate, change role)
 - [x] Reactivate users with auto-resend invite
-- [ ] User search/filter
-- [ ] Audit log (track who invited/deactivated users)
+- [x] User search/filter
+- [x] Audit log (track who invited/deactivated users)
 
 ## CI/CD & DevOps
 - [x] Docker containerization

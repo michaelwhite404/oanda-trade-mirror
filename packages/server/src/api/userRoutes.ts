@@ -2,8 +2,31 @@ import { Router, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import crypto from 'crypto';
 import { User } from '../db/models/User';
+import { AuditLog, AuditAction } from '../db';
 import { UserRole } from '../types/models';
 import { emailService } from '../services/emailService';
+
+async function logAudit(
+  action: AuditAction,
+  actorId: string,
+  actorUsername: string,
+  target?: { id?: string; email?: string; username?: string },
+  details?: Record<string, unknown>
+) {
+  try {
+    await AuditLog.create({
+      action,
+      actorId: new Types.ObjectId(actorId),
+      actorUsername,
+      targetId: target?.id ? new Types.ObjectId(target.id) : undefined,
+      targetEmail: target?.email,
+      targetUsername: target?.username,
+      details,
+    });
+  } catch (error) {
+    console.error('[AuditLog] Failed to log action:', error);
+  }
+}
 
 const INVITE_EXPIRY_DAYS = 7;
 
@@ -86,6 +109,15 @@ router.post('/', async (req: Request, res: Response) => {
       invitedBy,
     });
 
+    // Log audit event
+    await logAudit(
+      'user.invited',
+      req.authUser!.userId,
+      req.authUser!.username,
+      { id: user._id.toString(), email: user.email },
+      { role: user.role }
+    );
+
     res.status(201).json({
       _id: user._id,
       email: user.email,
@@ -137,6 +169,14 @@ router.post('/:id/resend-invite', async (req: Request, res: Response) => {
       role: user.role,
       invitedBy,
     });
+
+    // Log audit event
+    await logAudit(
+      'user.invite_resent',
+      req.authUser!.userId,
+      req.authUser!.username,
+      { id: user._id.toString(), email: user.email, username: user.username || undefined }
+    );
 
     res.json({ success: true });
   } catch (error) {
@@ -217,6 +257,14 @@ router.patch('/:id', async (req: Request, res: Response) => {
         invitedBy,
       });
 
+      // Log audit event for reactivation
+      await logAudit(
+        'user.reactivated',
+        req.authUser!.userId,
+        req.authUser!.username,
+        { id: existingUser._id.toString(), email: existingUser.email, username: existingUser.username || undefined }
+      );
+
       res.json({
         _id: existingUser._id,
         username: existingUser.username,
@@ -233,6 +281,10 @@ router.patch('/:id', async (req: Request, res: Response) => {
       return;
     }
 
+    // Track what's changing for audit log
+    const oldRole = existingUser.role;
+    const oldIsActive = existingUser.isActive;
+
     const user = await User.findByIdAndUpdate(
       id,
       { $set: updates },
@@ -242,6 +294,26 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (!user) {
       res.status(404).json({ error: 'User not found' });
       return;
+    }
+
+    // Log audit events for changes
+    if (updates.role !== undefined && updates.role !== oldRole) {
+      await logAudit(
+        'user.role_changed',
+        req.authUser!.userId,
+        req.authUser!.username,
+        { id: user._id.toString(), email: user.email, username: user.username || undefined },
+        { oldRole, newRole: updates.role }
+      );
+    }
+
+    if (updates.isActive === true && !oldIsActive) {
+      await logAudit(
+        'user.reactivated',
+        req.authUser!.userId,
+        req.authUser!.username,
+        { id: user._id.toString(), email: user.email, username: user.username || undefined }
+      );
     }
 
     res.json({
@@ -289,7 +361,54 @@ router.delete('/:id', async (req: Request, res: Response) => {
       return;
     }
 
+    // Log audit event
+    await logAudit(
+      'user.deactivated',
+      req.authUser!.userId,
+      req.authUser!.username,
+      { id: user._id.toString(), email: user.email, username: user.username || undefined }
+    );
+
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// GET /api/users/audit-log - Get audit log (admin only)
+router.get('/audit-log', async (req: Request, res: Response) => {
+  try {
+    const { limit = '50', offset = '0', action } = req.query;
+
+    const query: Record<string, unknown> = {};
+    if (action && typeof action === 'string') {
+      query.action = action;
+    }
+
+    const [logs, total] = await Promise.all([
+      AuditLog.find(query)
+        .sort({ createdAt: -1 })
+        .skip(Number(offset))
+        .limit(Number(limit)),
+      AuditLog.countDocuments(query),
+    ]);
+
+    res.json({
+      logs: logs.map((log) => ({
+        _id: log._id,
+        action: log.action,
+        actorId: log.actorId,
+        actorUsername: log.actorUsername,
+        targetId: log.targetId,
+        targetEmail: log.targetEmail,
+        targetUsername: log.targetUsername,
+        details: log.details,
+        createdAt: log.createdAt,
+      })),
+      total,
+      limit: Number(limit),
+      offset: Number(offset),
+    });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

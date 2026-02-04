@@ -6,3 +6,4 @@ export { User, UserDocument } from './models/User';
 export { PushSubscription, PushSubscriptionDocument } from './models/PushSubscription';
 export { ApiKey, ApiKeyDocument } from './models/ApiKey';
 export { Session, SessionDocument } from './models/Session';
+export { AuditLog, AuditLogDocument, AuditAction } from './models/AuditLog';

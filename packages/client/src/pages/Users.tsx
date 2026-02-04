@@ -39,8 +39,15 @@ import { useAuth } from '@/context/AuthContext';
 import { AddUserDialog, InviteFormData } from '@/components/users/AddUserDialog';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Plus, UserX, UserCheck, Mail, Clock } from 'lucide-react';
-import { UserAccount } from '@/api/client';
+import { Plus, UserX, UserCheck, Mail, Clock, Search, X, History, ChevronDown, ChevronUp, UserPlus, RefreshCw, Shield, UserMinus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { UserAccount, AuditAction } from '@/api/client';
+import { useAuditLog } from '@/hooks/useAuditLog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 function TableSkeleton() {
   return (
@@ -62,7 +69,12 @@ export default function Users() {
   const [showAddUser, setShowAddUser] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [userToDeactivate, setUserToDeactivate] = useState<UserAccount | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'viewer'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending'>('all');
+  const [showAuditLog, setShowAuditLog] = useState(false);
   const { data: users = [], isLoading, refetch } = useUsers();
+  const { data: auditData, isLoading: isLoadingAudit } = useAuditLog({ limit: 20 });
   const inviteUserMutation = useInviteUser();
   const resendInviteMutation = useResendInvite();
   const updateUserMutation = useUpdateUser();
@@ -107,8 +119,39 @@ export default function Users() {
     });
   };
 
-  const filteredUsers = showInactive ? users : users.filter((u) => u.isActive);
   const inactiveCount = users.filter((u) => !u.isActive).length;
+
+  const filteredUsers = users.filter((u) => {
+    // Active/Inactive filter
+    if (!showInactive && !u.isActive) return false;
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesUsername = u.username?.toLowerCase().includes(query);
+      const matchesEmail = u.email.toLowerCase().includes(query);
+      if (!matchesUsername && !matchesEmail) return false;
+    }
+
+    // Role filter
+    if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'active' && u.registrationStatus !== 'active') return false;
+      if (statusFilter === 'pending' && u.registrationStatus !== 'pending') return false;
+    }
+
+    return true;
+  });
+
+  const hasActiveFilters = searchQuery || roleFilter !== 'all' || statusFilter !== 'all';
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setRoleFilter('all');
+    setStatusFilter('all');
+  };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Never';
@@ -121,11 +164,110 @@ export default function Users() {
     });
   };
 
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return formatDate(dateString);
+  };
+
+  const getActionIcon = (action: AuditAction) => {
+    switch (action) {
+      case 'user.invited':
+        return <UserPlus className="h-4 w-4 text-blue-500" />;
+      case 'user.registered':
+        return <UserCheck className="h-4 w-4 text-green-500" />;
+      case 'user.role_changed':
+        return <Shield className="h-4 w-4 text-amber-500" />;
+      case 'user.deactivated':
+        return <UserMinus className="h-4 w-4 text-red-500" />;
+      case 'user.reactivated':
+        return <RefreshCw className="h-4 w-4 text-green-500" />;
+      case 'user.invite_resent':
+        return <Mail className="h-4 w-4 text-blue-500" />;
+      default:
+        return <History className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const formatAction = (action: AuditAction) => {
+    switch (action) {
+      case 'user.invited':
+        return 'invited';
+      case 'user.registered':
+        return 'completed registration';
+      case 'user.role_changed':
+        return 'changed role of';
+      case 'user.deactivated':
+        return 'deactivated';
+      case 'user.reactivated':
+        return 'reactivated';
+      case 'user.invite_resent':
+        return 'resent invite to';
+      default:
+        return action;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold sm:text-3xl">Users</h1>
-        <div className="flex items-center gap-4">
+        <Button onClick={() => setShowAddUser(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          <span className="hidden sm:inline">Invite User</span>
+          <span className="sm:hidden">Invite</span>
+        </Button>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 pr-9"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Select value={roleFilter} onValueChange={(v: 'all' | 'admin' | 'viewer') => setRoleFilter(v)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All roles</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="viewer">Viewer</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={(v: 'all' | 'active' | 'pending') => setStatusFilter(v)}>
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+            </SelectContent>
+          </Select>
           {inactiveCount > 0 && (
             <div className="flex items-center gap-2">
               <Switch
@@ -133,16 +275,17 @@ export default function Users() {
                 checked={showInactive}
                 onCheckedChange={setShowInactive}
               />
-              <Label htmlFor="show-inactive" className="text-sm text-muted-foreground cursor-pointer">
-                Show inactive ({inactiveCount})
+              <Label htmlFor="show-inactive" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
+                Inactive ({inactiveCount})
               </Label>
             </div>
           )}
-          <Button onClick={() => setShowAddUser(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Invite User</span>
-            <span className="sm:hidden">Invite</span>
-          </Button>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="mr-1 h-4 w-4" />
+              Clear
+            </Button>
+          )}
         </div>
       </div>
 
@@ -156,6 +299,16 @@ export default function Users() {
           <Button className="mt-4" onClick={() => setShowAddUser(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Invite User
+          </Button>
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <p className="text-muted-foreground">
+            No users match your search criteria.
+          </p>
+          <Button variant="outline" className="mt-4" onClick={clearFilters}>
+            <X className="mr-2 h-4 w-4" />
+            Clear Filters
           </Button>
         </div>
       ) : (
@@ -309,6 +462,83 @@ export default function Users() {
           </Table>
         </div>
       )}
+
+      {/* Audit Log Section */}
+      <Collapsible open={showAuditLog} onOpenChange={setShowAuditLog}>
+        <div className="rounded-lg border">
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <History className="h-5 w-5 text-muted-foreground" />
+                <span className="font-medium">Activity Log</span>
+                {auditData && auditData.total > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {auditData.total}
+                  </Badge>
+                )}
+              </div>
+              {showAuditLog ? (
+                <ChevronUp className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+              )}
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="border-t px-4 py-3">
+              {isLoadingAudit ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-4 flex-1" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                  ))}
+                </div>
+              ) : !auditData || auditData.logs.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No activity recorded yet.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {auditData.logs.map((log) => (
+                    <div key={log._id} className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                        {getActionIcon(log.action)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">
+                          <span className="font-medium">@{log.actorUsername}</span>
+                          {' '}{formatAction(log.action)}{' '}
+                          {log.targetUsername ? (
+                            <span className="font-medium">@{log.targetUsername}</span>
+                          ) : log.targetEmail ? (
+                            <span className="font-medium">{log.targetEmail}</span>
+                          ) : null}
+                          {log.action === 'user.role_changed' && log.details && (
+                            <span className="text-muted-foreground">
+                              {' '}from {String(log.details.oldRole)} to {String(log.details.newRole)}
+                            </span>
+                          )}
+                          {log.action === 'user.invited' && log.details && (
+                            <span className="text-muted-foreground">
+                              {' '}as {String(log.details.role)}
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatRelativeTime(log.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
 
       <AddUserDialog
         open={showAddUser}
