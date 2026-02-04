@@ -61,5 +61,5 @@
 - [x] Fly.io deployment configuration
 - [x] Manual deploy GitHub Action
 - [x] Staging environment with auto-deploy on push to main
-- [ ] Automated tests in CI pipeline
+- [x] Automated tests in CI pipeline
 - [ ] Database backup automation

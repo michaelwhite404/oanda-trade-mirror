@@ -6,6 +6,7 @@
     "dev": "pnpm --filter @oanda-trade-mirror/client dev",
     "start": "pnpm --filter @oanda-trade-mirror/server start",
     "build": "pnpm --filter '*' build",
+    "test": "pnpm --filter @oanda-trade-mirror/server test",
     "migrate": "pnpm --filter @oanda-trade-mirror/server migrate",
     "deploy": "./scripts/deploy.sh"
   }
