@@ -67,6 +67,17 @@ function ProtectedLayout() {
   );
 }
 
+const isStaging = window.location.hostname.includes('staging') || window.location.hostname.startsWith('stage.');
+
+function StagingBadge() {
+  if (!isStaging) return null;
+  return (
+    <div className="fixed bottom-3 right-3 z-[100] select-none rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-black shadow-lg opacity-70 hover:opacity-100 transition-opacity">
+      STAGING
+    </div>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -80,6 +91,7 @@ function App() {
             <Route path="/*" element={<ProtectedLayout />} />
           </Routes>
           <Toaster position="bottom-right" richColors />
+          <StagingBadge />
         </BrowserRouter>
       </WebSocketProvider>
     </AuthProvider>
