@@ -312,14 +312,125 @@ export default function Users() {
           </Button>
         </div>
       ) : (
-        <div className="rounded-lg border">
+        <>
+        {/* Mobile card layout */}
+        <div className="space-y-3 md:hidden">
+          {filteredUsers.map((user) => (
+            <div key={user._id} className={`rounded-lg border p-4 space-y-3 ${!user.isActive ? 'opacity-60' : ''}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.username || user.email}
+                      className="h-8 w-8 shrink-0 rounded-full"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium">
+                      {(user.username || user.email).charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    {user.username ? (
+                      <p className="font-medium truncate">@{user.username}</p>
+                    ) : (
+                      <p className="font-medium text-muted-foreground italic">Pending</p>
+                    )}
+                    <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {user.registrationStatus === 'pending' && user.isActive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleResendInvite(user._id)}
+                      disabled={resendInviteMutation.isPending}
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {currentUser?.id !== user._id && user.isActive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setUserToDeactivate(user)}
+                      disabled={deleteUserMutation.isPending}
+                    >
+                      <UserX className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {!user.isActive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-green-600 hover:text-green-600"
+                      onClick={() => handleReactivate(user._id)}
+                      disabled={updateUserMutation.isPending}
+                    >
+                      <UserCheck className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {currentUser?.id === user._id ? (
+                  <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                    {user.role}
+                  </Badge>
+                ) : (
+                  <Select
+                    value={user.role}
+                    onValueChange={(value: 'admin' | 'viewer') =>
+                      handleRoleChange(user._id, value)
+                    }
+                    disabled={updateUserMutation.isPending}
+                  >
+                    <SelectTrigger className="w-[100px] h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="viewer">viewer</SelectItem>
+                      <SelectItem value="admin">admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                {!user.isActive ? (
+                  <Badge variant="destructive">Inactive</Badge>
+                ) : user.registrationStatus === 'pending' ? (
+                  <Badge variant="outline" className="gap-1">
+                    <Clock className="h-3 w-3" />
+                    Pending
+                  </Badge>
+                ) : (
+                  <Badge variant="default">Active</Badge>
+                )}
+                {user.authProvider === 'google' && (
+                  <Badge variant="outline" className="text-xs">Google</Badge>
+                )}
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {user.registrationStatus === 'pending' ? (
+                    <span className="italic">Not registered</span>
+                  ) : (
+                    formatDate(user.lastLoginAt)
+                  )}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table layout */}
+        <div className="hidden md:block rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Last Login</TableHead>
+                <TableHead className="hidden lg:table-cell">Last Login</TableHead>
                 <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -392,7 +503,7 @@ export default function Users() {
                       <Badge variant="default">Active</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                     {user.registrationStatus === 'pending' ? (
                       <span className="italic">Not registered</span>
                     ) : (
@@ -461,6 +572,7 @@ export default function Users() {
             </TableBody>
           </Table>
         </div>
+        </>
       )}
 
       {/* Audit Log Section */}
