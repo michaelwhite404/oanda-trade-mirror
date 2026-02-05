@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter @oanda-trade-mirror/client dev",
+    "dev:server": "pnpm --filter @oanda-trade-mirror/server dev",
     "start": "pnpm --filter @oanda-trade-mirror/server start",
     "build": "pnpm --filter '*' build",
     "test": "pnpm --filter @oanda-trade-mirror/server test",

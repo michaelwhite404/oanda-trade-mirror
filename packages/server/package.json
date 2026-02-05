@@ -4,6 +4,7 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "ts-node src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -36,6 +37,7 @@
     "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.1",
     "ts-node": "^10.9.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.2.2",
     "vitest": "^4.0.18"
   }
