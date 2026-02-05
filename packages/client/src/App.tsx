@@ -68,12 +68,15 @@ function ProtectedLayout() {
 }
 
 const isStaging = window.location.hostname.includes('staging') || window.location.hostname.startsWith('stage.');
+const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-function StagingBadge() {
-  if (!isStaging) return null;
+function EnvironmentBadge() {
+  if (!isStaging && !isDev) return null;
+  const label = isStaging ? 'STAGING' : 'DEV';
+  const color = isStaging ? 'bg-amber-500' : 'bg-blue-500 text-white';
   return (
-    <div className="fixed bottom-3 right-3 z-[100] select-none rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-black shadow-lg opacity-70 hover:opacity-100 transition-opacity">
-      STAGING
+    <div className={`fixed bottom-3 right-3 z-[100] select-none rounded-full px-3 py-1 text-xs font-semibold shadow-lg opacity-70 hover:opacity-100 transition-opacity ${color}`}>
+      {label}
     </div>
   );
 }
@@ -91,7 +94,7 @@ function App() {
             <Route path="/*" element={<ProtectedLayout />} />
           </Routes>
           <Toaster position="bottom-right" richColors />
-          <StagingBadge />
+          <EnvironmentBadge />
         </BrowserRouter>
       </WebSocketProvider>
     </AuthProvider>
