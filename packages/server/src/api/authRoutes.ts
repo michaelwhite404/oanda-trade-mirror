@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { passport } from '../config/passport';
 import { authService, OAuthProfile } from '../services/authService';
 import { authenticate } from '../middleware/authMiddleware';
+import { authStrictLimiter, authModerateLimiter } from '../middleware/rateLimiter';
 import { User } from '../db';
 import { emailService } from '../services/emailService';
 
@@ -53,7 +54,7 @@ router.get('/verify-invite/:token', async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/complete-registration - Complete registration with username and password
-router.post('/complete-registration', async (req: Request, res: Response) => {
+router.post('/complete-registration', authStrictLimiter, async (req: Request, res: Response) => {
   try {
     const { token, username, password } = req.body;
 
@@ -207,7 +208,7 @@ router.post('/register', async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/login - Login user
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', authStrictLimiter, async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
 
@@ -272,7 +273,7 @@ router.post('/logout', authenticate, async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/refresh - Refresh access token
-router.post('/refresh', async (req: Request, res: Response) => {
+router.post('/refresh', authModerateLimiter, async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
     const sessionId = req.cookies?.sessionId;
@@ -479,7 +480,7 @@ router.post('/change-password', authenticate, async (req: Request, res: Response
 });
 
 // POST /api/auth/forgot-password - Request password reset
-router.post('/forgot-password', async (req: Request, res: Response) => {
+router.post('/forgot-password', authStrictLimiter, async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
 
@@ -552,7 +553,7 @@ router.get('/verify-reset/:token', async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/reset-password - Reset password with token
-router.post('/reset-password', async (req: Request, res: Response) => {
+router.post('/reset-password', authStrictLimiter, async (req: Request, res: Response) => {
   try {
     const { token, password } = req.body;
 
@@ -610,6 +611,7 @@ router.get('/google', passport.authenticate('google', { session: false }));
 // GET /api/auth/google/callback - Google OAuth callback
 router.get(
   '/google/callback',
+  authModerateLimiter,
   passport.authenticate('google', { session: false, failureRedirect: `${APP_URL}/login?error=oauth_failed` }),
   async (req: Request, res: Response) => {
     try {

@@ -9,26 +9,11 @@ import apiKeyRoutes from './apiKeyRoutes';
 import webhookRoutes from './webhookRoutes';
 import { streamManager } from '../streaming/streamManager';
 import { authenticate, requireRole } from '../middleware/authMiddleware';
+import { apiLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
-// Auth routes (public)
-router.use('/auth', authRoutes);
-
-// Push routes (public key endpoint is public, subscribe/unsubscribe are protected)
-router.use('/push', pushRoutes);
-
-// Protected routes
-router.use('/accounts', authenticate, accountRoutes);
-router.use('/trades', authenticate, tradeRoutes);
-router.use('/logs', authenticate, logRoutes);
-router.use('/api-keys', authenticate, apiKeyRoutes);
-router.use('/webhooks', authenticate, webhookRoutes);
-
-// Admin-only routes
-router.use('/users', authenticate, requireRole('admin'), userRoutes);
-
-// Health check endpoint
+// Health check endpoint (no rate limit)
 router.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -59,5 +44,24 @@ router.get('/streams/status', (_req, res) => {
     streams,
   });
 });
+
+// Apply general rate limit to all remaining routes
+router.use(apiLimiter);
+
+// Auth routes (public)
+router.use('/auth', authRoutes);
+
+// Push routes (public key endpoint is public, subscribe/unsubscribe are protected)
+router.use('/push', pushRoutes);
+
+// Protected routes
+router.use('/accounts', authenticate, accountRoutes);
+router.use('/trades', authenticate, tradeRoutes);
+router.use('/logs', authenticate, logRoutes);
+router.use('/api-keys', authenticate, apiKeyRoutes);
+router.use('/webhooks', authenticate, webhookRoutes);
+
+// Admin-only routes
+router.use('/users', authenticate, requireRole('admin'), userRoutes);
 
 export default router;
