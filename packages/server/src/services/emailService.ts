@@ -2,7 +2,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.EMAIL_FROM || "onboarding@resend.dev";
+const FROM_EMAIL = process.env.EMAIL_FROM || "onboarding@forextradingmirror.com";
 const APP_URL = process.env.APP_URL || "http://localhost:5173";
 const EMAIL_ENABLED = process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== "";
 
