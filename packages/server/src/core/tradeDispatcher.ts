@@ -1,13 +1,35 @@
 import { Types } from 'mongoose';
 import { placeMarketOrder, getAccountSummary } from '../oanda/oandaApi';
-import { TradeHistoryDocument, MirrorAccountDocument, SourceAccountDocument, MirrorAccount, SourceAccount } from '../db';
+import { TradeHistoryDocument, MirrorAccountDocument, SourceAccountDocument, MirrorAccount, SourceAccount, Webhook } from '../db';
 import { TradeInstruction } from '../types/models';
 import { tradeHistoryService } from '../services/tradeHistoryService';
 import { auditService } from '../services/auditService';
+import { dispatchWebhookEvent } from '../services/webhookService';
 
 // Dynamic scaling constants
 const MIN_SCALE_FACTOR = 0.1;
 const MAX_SCALE_FACTOR = 2.0;
+
+// Dispatch webhooks to all subscribed users
+async function dispatchTradeWebhook(
+  event: 'trade.mirrored' | 'trade.failed' | 'trade.retried',
+  data: Record<string, unknown>
+): Promise<void> {
+  try {
+    // Find all users who have webhooks for this event
+    const webhooks = await Webhook.find({
+      events: event,
+      isActive: true,
+    }).distinct('userId');
+
+    // Dispatch to each user in parallel
+    await Promise.allSettled(
+      webhooks.map((userId) => dispatchWebhookEvent(userId.toString(), event, data))
+    );
+  } catch (error) {
+    console.error('Error dispatching trade webhook:', error);
+  }
+}
 
 interface ScaleResult {
   scaleFactor: number;
@@ -165,6 +187,20 @@ export const mirrorTrade = async (
         oandaTransactionId,
         executedUnits: scaledUnits,
       });
+
+      // Dispatch webhook for successful mirror
+      dispatchTradeWebhook('trade.mirrored', {
+        sourceAccountId: sourceAccountId.toString(),
+        mirrorAccountId: mirrorAccountId.toString(),
+        instrument: tradeHistory.instrument,
+        side: tradeHistory.side,
+        originalUnits: tradeHistory.units,
+        executedUnits: scaledUnits,
+        scaleFactor: scaleResult.scaleFactor,
+        scalingMode: scaleResult.mode,
+        oandaTransactionId,
+        sourceTransactionId: tradeHistory.sourceTransactionId,
+      });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
@@ -196,6 +232,17 @@ export const mirrorTrade = async (
         oandaAccountId: mirror.oandaAccountId,
         success: false,
         errorMessage,
+      });
+
+      // Dispatch webhook for failed mirror
+      dispatchTradeWebhook('trade.failed', {
+        sourceAccountId: sourceAccountId.toString(),
+        mirrorAccountId: mirrorAccountId.toString(),
+        instrument: tradeHistory.instrument,
+        side: tradeHistory.side,
+        originalUnits: tradeHistory.units,
+        errorMessage,
+        sourceTransactionId: tradeHistory.sourceTransactionId,
       });
 
       // Continue with other mirrors even if one fails
@@ -285,6 +332,21 @@ export const retryMirrorExecution = async (
         scalingMode: scaleResult.mode,
         oandaTransactionId,
       },
+    });
+
+    // Dispatch webhook for successful retry
+    dispatchTradeWebhook('trade.retried', {
+      sourceAccountId: (trade.sourceAccountId as Types.ObjectId).toString(),
+      mirrorAccountId: mirrorAccountId.toString(),
+      instrument: trade.instrument,
+      side: trade.side,
+      originalUnits: trade.units,
+      executedUnits: scaledUnits,
+      scaleFactor: scaleResult.scaleFactor,
+      scalingMode: scaleResult.mode,
+      oandaTransactionId,
+      sourceTransactionId: trade.sourceTransactionId,
+      success: true,
     });
 
     return {

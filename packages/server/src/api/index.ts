@@ -6,6 +6,7 @@ import authRoutes from './authRoutes';
 import pushRoutes from './pushRoutes';
 import userRoutes from './userRoutes';
 import apiKeyRoutes from './apiKeyRoutes';
+import webhookRoutes from './webhookRoutes';
 import { streamManager } from '../streaming/streamManager';
 import { authenticate, requireRole } from '../middleware/authMiddleware';
 
@@ -22,6 +23,7 @@ router.use('/accounts', authenticate, accountRoutes);
 router.use('/trades', authenticate, tradeRoutes);
 router.use('/logs', authenticate, logRoutes);
 router.use('/api-keys', authenticate, apiKeyRoutes);
+router.use('/webhooks', authenticate, webhookRoutes);
 
 // Admin-only routes
 router.use('/users', authenticate, requireRole('admin'), userRoutes);

@@ -1,8 +1,28 @@
 import { Types } from 'mongoose';
 import axios from 'axios';
-import { SourceAccount, SourceAccountDocument, MirrorAccount, MirrorAccountDocument } from '../db';
+import { SourceAccount, SourceAccountDocument, MirrorAccount, MirrorAccountDocument, Webhook } from '../db';
 import { OandaEnvironment, getOandaBaseUrl } from '../types/oanda';
 import { auditService } from './auditService';
+import { dispatchWebhookEvent } from './webhookService';
+
+// Dispatch account webhooks to all subscribed users
+async function dispatchAccountWebhook(
+  event: 'account.connected' | 'account.disconnected',
+  data: Record<string, unknown>
+): Promise<void> {
+  try {
+    const webhooks = await Webhook.find({
+      events: event,
+      isActive: true,
+    }).distinct('userId');
+
+    await Promise.allSettled(
+      webhooks.map((userId) => dispatchWebhookEvent(userId.toString(), event, data))
+    );
+  } catch (error) {
+    console.error('Error dispatching account webhook:', error);
+  }
+}
 
 interface CreateSourceAccountParams {
   oandaAccountId: string;
@@ -78,6 +98,15 @@ class AccountService {
       details: { oandaAccountId: params.oandaAccountId, environment: params.environment },
     });
 
+    // Dispatch webhook for account connected
+    dispatchAccountWebhook('account.connected', {
+      accountType: 'source',
+      accountId: (sourceAccount._id as Types.ObjectId).toString(),
+      oandaAccountId: params.oandaAccountId,
+      environment: params.environment,
+      alias: params.alias || null,
+    });
+
     return sourceAccount;
   }
 
@@ -119,6 +148,16 @@ class AccountService {
         scalingMode: params.scalingMode ?? 'dynamic',
         scaleFactor: params.scaleFactor ?? 1.0,
       },
+    });
+
+    // Dispatch webhook for account connected
+    dispatchAccountWebhook('account.connected', {
+      accountType: 'mirror',
+      accountId: (mirrorAccount._id as Types.ObjectId).toString(),
+      sourceAccountId: params.sourceAccountId.toString(),
+      oandaAccountId: params.oandaAccountId,
+      environment: params.environment,
+      alias: params.alias || null,
     });
 
     return mirrorAccount;
@@ -182,19 +221,36 @@ class AccountService {
   }
 
   async deactivateSourceAccount(sourceAccountId: Types.ObjectId): Promise<void> {
+    const source = await SourceAccount.findById(sourceAccountId);
     await SourceAccount.findByIdAndUpdate(sourceAccountId, { isActive: false });
     await MirrorAccount.updateMany({ sourceAccountId }, { isActive: false });
 
     await auditService.info('account', 'Source account deactivated', {
       sourceAccountId,
     });
+
+    // Dispatch webhook for account disconnected
+    dispatchAccountWebhook('account.disconnected', {
+      accountType: 'source',
+      accountId: sourceAccountId.toString(),
+      oandaAccountId: source?.oandaAccountId,
+    });
   }
 
   async deactivateMirrorAccount(mirrorAccountId: Types.ObjectId): Promise<void> {
+    const mirror = await MirrorAccount.findById(mirrorAccountId);
     await MirrorAccount.findByIdAndUpdate(mirrorAccountId, { isActive: false });
 
     await auditService.info('account', 'Mirror account deactivated', {
       mirrorAccountId,
+    });
+
+    // Dispatch webhook for account disconnected
+    dispatchAccountWebhook('account.disconnected', {
+      accountType: 'mirror',
+      accountId: mirrorAccountId.toString(),
+      sourceAccountId: mirror?.sourceAccountId?.toString(),
+      oandaAccountId: mirror?.oandaAccountId,
     });
   }
 

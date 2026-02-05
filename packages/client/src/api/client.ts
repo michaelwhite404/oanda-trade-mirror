@@ -448,6 +448,68 @@ export const api = {
     const response = await doFetch();
     return handleResponse<{ success: boolean; revokedCount: number }>(response, doFetch);
   },
+
+  // Webhooks
+  async getWebhooks() {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/webhooks`);
+    const response = await doFetch();
+    return handleResponse<WebhookInfo[]>(response, doFetch);
+  },
+
+  async getWebhookEvents() {
+    const doFetch = () => fetchWithCredentials(`${BASE_URL}/webhooks/events`);
+    const response = await doFetch();
+    return handleResponse<WebhookEvent[]>(response, doFetch);
+  },
+
+  async createWebhook(data: CreateWebhookRequest) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/webhooks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    const response = await doFetch();
+    return handleResponse<WebhookWithSecret>(response, doFetch);
+  },
+
+  async updateWebhook(id: string, data: UpdateWebhookRequest) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/webhooks/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    const response = await doFetch();
+    return handleResponse<WebhookInfo>(response, doFetch);
+  },
+
+  async deleteWebhook(id: string) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/webhooks/${id}`, {
+        method: "DELETE",
+      });
+    const response = await doFetch();
+    return handleResponse<void>(response, doFetch);
+  },
+
+  async regenerateWebhookSecret(id: string) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/webhooks/${id}/regenerate-secret`, {
+        method: "POST",
+      });
+    const response = await doFetch();
+    return handleResponse<{ secret: string }>(response, doFetch);
+  },
+
+  async testWebhook(id: string) {
+    const doFetch = () =>
+      fetchWithCredentials(`${BASE_URL}/webhooks/${id}/test`, {
+        method: "POST",
+      });
+    const response = await doFetch();
+    return handleResponse<{ success: boolean; message: string }>(response, doFetch);
+  },
 };
 
 // Types
@@ -811,4 +873,58 @@ export interface SessionInfo {
   lastActiveAt: string;
   createdAt: string;
   isCurrent: boolean;
+}
+
+// Webhook types
+export type WebhookEvent =
+  | 'trade.mirrored'
+  | 'trade.failed'
+  | 'trade.retried'
+  | 'account.connected'
+  | 'account.disconnected';
+
+export const WEBHOOK_EVENTS: WebhookEvent[] = [
+  'trade.mirrored',
+  'trade.failed',
+  'trade.retried',
+  'account.connected',
+  'account.disconnected',
+];
+
+export const WEBHOOK_EVENT_DESCRIPTIONS: Record<WebhookEvent, string> = {
+  'trade.mirrored': 'When a trade is successfully mirrored to an account',
+  'trade.failed': 'When a trade fails to be mirrored',
+  'trade.retried': 'When a failed trade is retried',
+  'account.connected': 'When a new account is connected',
+  'account.disconnected': 'When an account is disconnected',
+};
+
+export interface WebhookInfo {
+  _id: string;
+  name: string;
+  url: string;
+  secret: string; // Truncated, e.g., "abc123..."
+  events: WebhookEvent[];
+  isActive: boolean;
+  lastTriggeredAt: string | null;
+  failureCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebhookWithSecret extends Omit<WebhookInfo, 'secret'> {
+  secret: string; // Full secret, only on creation
+}
+
+export interface CreateWebhookRequest {
+  name: string;
+  url: string;
+  events: WebhookEvent[];
+}
+
+export interface UpdateWebhookRequest {
+  name?: string;
+  url?: string;
+  events?: WebhookEvent[];
+  isActive?: boolean;
 }

@@ -7,3 +7,4 @@ export { PushSubscription, PushSubscriptionDocument } from './models/PushSubscri
 export { ApiKey, ApiKeyDocument } from './models/ApiKey';
 export { Session, SessionDocument } from './models/Session';
 export { AuditLog, AuditLogDocument, AuditAction } from './models/AuditLog';
+export { Webhook, WebhookDocument, WebhookEvent, WEBHOOK_EVENTS } from './models/Webhook';

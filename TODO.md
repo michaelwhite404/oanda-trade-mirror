@@ -63,3 +63,6 @@
 - [x] Staging environment with auto-deploy on push to main
 - [x] Automated tests in CI pipeline
 - [x] Database backup automation (MongoDB Atlas built-in)
+
+## Integrations
+- [x] Webhook notifications (trade.mirrored, trade.failed, trade.retried, account.connected, account.disconnected)
