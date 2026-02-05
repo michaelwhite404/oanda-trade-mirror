@@ -18,6 +18,9 @@ logEnvValidation();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy (required behind Fly.io reverse proxy for req.hostname, req.ip, etc.)
+app.set('trust proxy', true);
+
 // Create HTTP server for both Express and WebSocket
 const httpServer = createServer(app);
 
@@ -36,15 +39,31 @@ app.use(express.json());
 configurePassport();
 app.use(passport.initialize());
 
-// API routes
+// API routes — served at /api and at the root of the api.* subdomain
 app.use('/api', apiRoutes);
+app.use('/', (req, _res, next) => {
+  const host = req.hostname;
+  if (host.startsWith('api.')) {
+    return apiRoutes(req, _res, next);
+  }
+  next();
+});
 
 // Serve static frontend in production
 const clientDistPath = path.join(__dirname, '../../client/dist');
 app.use(express.static(clientDistPath));
 
-// SPA fallback - serve index.html for client-side routes
-app.get('*', (_req, res) => {
+// Return JSON 404 for unmatched API routes
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+// SPA fallback - serve index.html for client-side routes (skip api subdomain)
+app.get('*', (req, res) => {
+  if (req.hostname.startsWith('api.')) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
