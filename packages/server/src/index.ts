@@ -26,8 +26,15 @@ const httpServer = createServer(app);
 
 let orchestrator: MirrorOrchestrator | null = null;
 
-// CORS configuration
-const corsOrigin = process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173');
+// CORS configuration — supports comma-separated origins in CORS_ORIGIN
+const rawCorsOrigin = process.env.CORS_ORIGIN;
+const corsOrigin = rawCorsOrigin
+  ? rawCorsOrigin.includes(',')
+    ? rawCorsOrigin.split(',').map(o => o.trim())
+    : rawCorsOrigin
+  : process.env.NODE_ENV === 'production'
+    ? false
+    : 'http://localhost:5173';
 app.use(cors({
   origin: corsOrigin,
   credentials: true,
